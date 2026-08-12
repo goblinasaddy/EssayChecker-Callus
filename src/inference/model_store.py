@@ -15,7 +15,8 @@ class ProductionModelArtifact:
     Stores and validates all parameters, reference statistics, and schemas for inference.
     """
 
-    DEFAULT_ARTIFACT_PATH = os.path.join("data", "models", "detector_artifact_v2.json")
+    REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    DEFAULT_ARTIFACT_PATH = os.path.join(REPO_ROOT, "data", "models", "detector_artifact_v2.json")
 
     def __init__(
         self,

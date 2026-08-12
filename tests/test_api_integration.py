@@ -1,10 +1,12 @@
-"""Integration tests for FastAPI application server endpoints."""
+"""Integration tests for FastAPI application server endpoints and Vercel entrypoint."""
 import pytest
 from fastapi.testclient import TestClient
 from src.api.server import app
+from api.index import app as vercel_app
 
 
 client = TestClient(app)
+vercel_client = TestClient(vercel_app)
 
 
 def test_api_get_samples():
@@ -49,3 +51,22 @@ Through those dumplings, I learned the quiet language of my heritage."""
     assert "highlighted_spans" in data
     assert "evidence" in data
     assert "disclaimers" in data
+
+
+def test_vercel_entrypoint_and_static_serving():
+    # Test root index
+    res_index = vercel_client.get("/")
+    assert res_index.status_code == 200
+    assert "EssayChecker" in res_index.text
+
+    # Test static assets
+    res_css = vercel_client.get("/static/style.css")
+    assert res_css.status_code == 200
+
+    res_js = vercel_client.get("/static/app.js")
+    assert res_js.status_code == 200
+
+    # Test API through Vercel entrypoint
+    res_api = vercel_client.get("/api/reference-stats")
+    assert res_api.status_code == 200
+    assert "thresholds" in res_api.json()
