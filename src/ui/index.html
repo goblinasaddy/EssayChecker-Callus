@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VeritasEssay | Evidence-Based AI Detection for Admissions Essays</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <!-- Background Glow Accents -->
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="brand">
+        <div class="brand-badge">🔬 Callus 2026 Phase 2</div>
+        <h1 class="brand-title">Veritas<span class="gradient-text">Essay</span></h1>
+        <p class="brand-subtitle">Evidence-Based AI Authorship Analysis for College Admissions Essays</p>
+      </div>
+      <div class="header-badges">
+        <div class="system-badge">
+          <span class="badge-dot green"></span>
+          <span>Zero LLM-Judge (Deterministic)</span>
+        </div>
+        <div class="system-badge">
+          <span class="badge-dot purple"></span>
+          <span>Model v2.0.0 Calibrated</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-layout">
+    <!-- Left Section: Input & Samples -->
+    <section class="input-panel glass-card">
+      <div class="panel-header">
+        <div class="panel-title-wrap">
+          <h2 class="panel-title">1. Admissions Essay Input</h2>
+          <p class="panel-hint">Paste an undergraduate personal statement or load an empirical benchmark case.</p>
+        </div>
+        <div class="sample-pills">
+          <span class="sample-label">Try Benchmark:</span>
+          <button class="pill-btn active" id="btnSampleHuman" data-sample="sample_human_dumplings">Authentic Human</button>
+          <button class="pill-btn" id="btnSampleAI" data-sample="sample_ai_gpt4o">AI (GPT-4o)</button>
+          <button class="pill-btn" id="btnSamplePolished" data-sample="sample_ai_polished">AI-Polished</button>
+          <button class="pill-btn failure-pill" id="btnSampleFP" data-sample="sample_false_positive">Diagnosed False Positive</button>
+        </div>
+      </div>
+
+      <div class="sample-info-card" id="sampleInfoCard">
+        <div class="sample-info-header">
+          <span class="sample-badge emerald" id="sampleBadge">Ground Truth: Human</span>
+          <span class="sample-title" id="sampleTitle">Authentic Student Essay (Cultural Heritage)</span>
+        </div>
+        <p class="sample-desc" id="sampleDesc">Authentic personal narrative featuring concrete sensory details, tactile apprentice memories, and active first-person agency.</p>
+      </div>
+
+      <div class="textarea-container">
+        <textarea id="essayInput" placeholder="Paste full admissions essay here (minimum 20 words)..." spellcheck="false"></textarea>
+        <div class="textarea-footer">
+          <div class="counter-wrap">
+            <span id="wordCount">0</span> words &nbsp;|&nbsp; <span id="charCount">0</span> characters
+          </div>
+          <div class="action-buttons">
+            <button class="secondary-btn" id="btnClear">Clear</button>
+            <button class="primary-btn" id="btnAnalyze">
+              <span class="btn-spinner" id="analyzeSpinner"></span>
+              <span id="btnAnalyzeText">Analyze Measurable Evidence</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-footer-notes">
+        <div class="ethical-note">
+          <span class="icon">⚖️</span>
+          <span><strong>Ethical AI Notice:</strong> Decisions are evaluated against a fixed human reference distribution across 48 empirical features without LLM black-boxes.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Section: Analysis & Highlight Inspector -->
+    <section class="results-panel glass-card" id="resultsSection">
+      <!-- Empty Placeholder State -->
+      <div class="placeholder-state" id="emptyPlaceholder">
+        <div class="placeholder-icon">📊</div>
+        <h3>No Analysis Performed Yet</h3>
+        <p>Paste an admissions essay on the left and click <strong>"Analyze Measurable Evidence"</strong> to inspect sentence-level signals and statistical deviations.</p>
+      </div>
+
+      <!-- Results View -->
+      <div class="analysis-view" id="analysisView" style="display: none;">
+        <!-- Top Verdict Card -->
+        <div class="verdict-card" id="verdictCard">
+          <div class="verdict-header">
+            <div class="verdict-status-pill" id="verdictPill">
+              <span class="badge-dot" id="verdictDot"></span>
+              <span id="verdictText">Likely Human</span>
+            </div>
+            <div class="confidence-tag" id="confidenceTag">
+              <span>Confidence: </span><strong id="confidenceText">High</strong>
+            </div>
+          </div>
+          
+          <p class="verdict-summary" id="verdictSummary"></p>
+
+          <!-- Probabilistic Gauge -->
+          <div class="gauge-section">
+            <div class="gauge-labels">
+              <span>Human Baseline Profile</span>
+              <span id="gaugeValue">AI Probability: 12.4%</span>
+              <span>Synthetic AI Archetype</span>
+            </div>
+            <div class="gauge-track">
+              <div class="gauge-fill" id="gaugeFill" style="width: 12%;"></div>
+            </div>
+            <div class="gauge-zones">
+              <span class="zone green">0% - 35% Human</span>
+              <span class="zone amber">35% - 65% Uncertain</span>
+              <span class="zone purple">65% - 85% AI-Assisted</span>
+              <span class="zone red">85% - 100% AI-Gen</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metrics Tally Row -->
+        <div class="metrics-row">
+          <div class="metric-box">
+            <span class="metric-val" id="metricWords">0</span>
+            <span class="metric-label">Total Words</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-val" id="metricSentences">0</span>
+            <span class="metric-label">Sentences</span>
+          </div>
+          <div class="metric-box alert-box">
+            <span class="metric-val" id="metricFlagged">0</span>
+            <span class="metric-label">Flagged Sentences</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-val" id="metricMahalanobis">0.00</span>
+            <span class="metric-label">Mahalanobis Dist</span>
+          </div>
+        </div>
+
+        <!-- Two Column Inspector: Highlighted Text + Evidence Detail -->
+        <div class="inspector-grid">
+          <!-- Interactive Text Reader -->
+          <div class="text-inspector-card">
+            <div class="card-header">
+              <h3>2. Interactive Span Grounding</h3>
+              <span class="card-subtitle">Click highlighted sentences to inspect evidence</span>
+            </div>
+            <div class="legend-row">
+              <span class="legend-item"><span class="legend-chip high"></span> AI-Skewed (High)</span>
+              <span class="legend-item"><span class="legend-chip med"></span> AI-Skewed (Medium)</span>
+              <span class="legend-item"><span class="legend-chip human"></span> Human Grounded</span>
+            </div>
+            <div class="highlighted-essay-body" id="highlightedEssayBody">
+              <!-- Dynamically populated sentence spans -->
+            </div>
+          </div>
+
+          <!-- Sentence Evidence Drawer -->
+          <div class="evidence-drawer-card" id="evidenceDrawer">
+            <div class="drawer-header">
+              <h3>3. Sentence Evidence Inspector</h3>
+              <span class="drawer-badge" id="selectedSpanBadge">Sentence #1 Selected</span>
+            </div>
+
+            <div class="selected-sentence-box" id="selectedSentenceText">
+              "Click on any sentence in the left panel to inspect its local measurements and deviation from the human reference baseline."
+            </div>
+
+            <div class="evidence-items-container" id="evidenceItemsContainer">
+              <!-- Dynamically populated evidence cards -->
+            </div>
+
+            <!-- Top Global Factors -->
+            <div class="global-factors-wrap">
+              <h4>Top Global Decision Drivers</h4>
+              <div class="factors-list" id="globalFactorsList">
+                <!-- Top AI/Human features -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Disclaimers & Ethics Card -->
+        <div class="disclaimer-card">
+          <h4>⚠️ Probabilistic Limitations & Guidance</h4>
+          <p id="disclaimerText"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
