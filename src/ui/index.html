@@ -3,203 +3,210 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VeritasEssay | Evidence-Based AI Detection for Admissions Essays</title>
+  <title>EssayChecker | Evidence-Based AI Authorship Analysis</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <!-- Background Glow Accents -->
-  <div class="glow-orb orb-1"></div>
-  <div class="glow-orb orb-2"></div>
-
-  <!-- Header -->
+  <!-- Header with Centered Official Logo -->
   <header class="app-header">
-    <div class="header-content">
-      <div class="brand">
-        <div class="brand-badge">🔬 Callus 2026 Phase 2</div>
-        <h1 class="brand-title">Veritas<span class="gradient-text">Essay</span></h1>
+    <div class="header-container">
+      <div class="brand-center">
+        <img src="/static/assets/logo.png" alt="EssayChecker Logo" class="brand-logo" id="appLogo">
+        <h1 class="brand-title">EssayChecker</h1>
         <p class="brand-subtitle">Evidence-Based AI Authorship Analysis for College Admissions Essays</p>
       </div>
-      <div class="header-badges">
-        <div class="system-badge">
-          <span class="badge-dot green"></span>
-          <span>Zero LLM-Judge (Deterministic)</span>
-        </div>
-        <div class="system-badge">
-          <span class="badge-dot purple"></span>
-          <span>Model v2.0.0 Calibrated</span>
-        </div>
+      <div class="system-meta-row">
+        <span class="meta-tag">Callus 2026 Phase 2</span>
+        <span class="meta-tag">Zero LLM-Judge (Deterministic)</span>
+        <span class="meta-tag">Calibrated Model v2.0.0</span>
       </div>
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="main-layout">
-    <!-- Left Section: Input & Samples -->
-    <section class="input-panel glass-card">
-      <div class="panel-header">
-        <div class="panel-title-wrap">
-          <h2 class="panel-title">1. Admissions Essay Input</h2>
-          <p class="panel-hint">Paste an undergraduate personal statement or load an empirical benchmark case.</p>
+  <!-- Main Single-Page Container -->
+  <main class="app-main">
+    
+    <!-- 1. Essay Input Section -->
+    <section class="brutal-card input-section">
+      <div class="section-top">
+        <div class="section-title-wrap">
+          <span class="section-number">01</span>
+          <h2 class="section-heading">Essay Input</h2>
         </div>
-        <div class="sample-pills">
-          <span class="sample-label">Try Benchmark:</span>
-          <button class="pill-btn active" id="btnSampleHuman" data-sample="sample_human_dumplings">Authentic Human</button>
-          <button class="pill-btn" id="btnSampleAI" data-sample="sample_ai_gpt4o">AI (GPT-4o)</button>
-          <button class="pill-btn" id="btnSamplePolished" data-sample="sample_ai_polished">AI-Polished</button>
-          <button class="pill-btn failure-pill" id="btnSampleFP" data-sample="sample_false_positive">Diagnosed False Positive</button>
+        <div class="sample-btn-group">
+          <span class="group-label">Benchmarks:</span>
+          <button class="sample-btn active" id="btnSampleHuman" data-sample="sample_human_dumplings">Authentic Human</button>
+          <button class="sample-btn" id="btnSampleAI" data-sample="sample_ai_gpt4o">AI (GPT-4o)</button>
+          <button class="sample-btn" id="btnSamplePolished" data-sample="sample_ai_polished">AI-Polished</button>
+          <button class="sample-btn failure-btn" id="btnSampleFP" data-sample="sample_false_positive">Diagnosed False Positive</button>
         </div>
       </div>
 
-      <div class="sample-info-card" id="sampleInfoCard">
-        <div class="sample-info-header">
-          <span class="sample-badge emerald" id="sampleBadge">Ground Truth: Human</span>
-          <span class="sample-title" id="sampleTitle">Authentic Student Essay (Cultural Heritage)</span>
+      <!-- Benchmark Info Box -->
+      <div class="benchmark-info-box" id="sampleInfoCard">
+        <div class="info-header">
+          <span class="status-badge" id="sampleBadge">Ground Truth: Human</span>
+          <span class="info-title" id="sampleTitle">Authentic Student Essay (Cultural Heritage)</span>
         </div>
-        <p class="sample-desc" id="sampleDesc">Authentic personal narrative featuring concrete sensory details, tactile apprentice memories, and active first-person agency.</p>
+        <p class="info-desc" id="sampleDesc">Authentic personal narrative featuring concrete sensory details, tactile apprentice memories, and active first-person agency.</p>
       </div>
 
-      <div class="textarea-container">
-        <textarea id="essayInput" placeholder="Paste full admissions essay here (minimum 20 words)..." spellcheck="false"></textarea>
-        <div class="textarea-footer">
-          <div class="counter-wrap">
+      <!-- Textarea Input Area -->
+      <div class="editor-wrap">
+        <textarea id="essayInput" placeholder="Paste admissions essay text here (minimum 20 words)..." spellcheck="false"></textarea>
+        <div class="editor-statusbar">
+          <div class="stat-counts">
             <span id="wordCount">0</span> words &nbsp;|&nbsp; <span id="charCount">0</span> characters
           </div>
-          <div class="action-buttons">
-            <button class="secondary-btn" id="btnClear">Clear</button>
-            <button class="primary-btn" id="btnAnalyze">
-              <span class="btn-spinner" id="analyzeSpinner"></span>
-              <span id="btnAnalyzeText">Analyze Measurable Evidence</span>
+          <div class="editor-actions">
+            <button class="btn-secondary" id="btnClear">Clear Text</button>
+            <button class="btn-primary" id="btnAnalyze">
+              <span class="btn-loader" id="analyzeSpinner"></span>
+              <span id="btnAnalyzeText">Analyze Essay Evidence</span>
             </button>
           </div>
         </div>
       </div>
-
-      <div class="panel-footer-notes">
-        <div class="ethical-note">
-          <span class="icon">⚖️</span>
-          <span><strong>Ethical AI Notice:</strong> Decisions are evaluated against a fixed human reference distribution across 48 empirical features without LLM black-boxes.</span>
-        </div>
-      </div>
     </section>
 
-    <!-- Right Section: Analysis & Highlight Inspector -->
-    <section class="results-panel glass-card" id="resultsSection">
-      <!-- Empty Placeholder State -->
-      <div class="placeholder-state" id="emptyPlaceholder">
-        <div class="placeholder-icon">📊</div>
-        <h3>No Analysis Performed Yet</h3>
-        <p>Paste an admissions essay on the left and click <strong>"Analyze Measurable Evidence"</strong> to inspect sentence-level signals and statistical deviations.</p>
+    <!-- 2. Analysis Output Section -->
+    <section class="results-container" id="resultsSection">
+      <!-- Empty Placeholder -->
+      <div class="brutal-card empty-card" id="emptyPlaceholder">
+        <div class="empty-title">Awaiting Submission</div>
+        <p class="empty-text">Select a benchmark essay above or paste custom admissions text, then click <strong>Analyze Essay Evidence</strong>.</p>
       </div>
 
-      <!-- Results View -->
-      <div class="analysis-view" id="analysisView" style="display: none;">
-        <!-- Top Verdict Card -->
-        <div class="verdict-card" id="verdictCard">
-          <div class="verdict-header">
-            <div class="verdict-status-pill" id="verdictPill">
-              <span class="badge-dot" id="verdictDot"></span>
-              <span id="verdictText">Likely Human</span>
+      <!-- Active Analysis View -->
+      <div class="analysis-content" id="analysisView" style="display: none;">
+        
+        <!-- Overall Decision Card -->
+        <div class="brutal-card verdict-card" id="verdictCard">
+          <div class="verdict-banner">
+            <div class="verdict-main">
+              <span class="verdict-sub-label">Overall Statistical Assessment</span>
+              <div class="verdict-badge" id="verdictBadge">Likely Human</div>
             </div>
-            <div class="confidence-tag" id="confidenceTag">
-              <span>Confidence: </span><strong id="confidenceText">High</strong>
+            <div class="verdict-stats-col">
+              <div class="prob-display">
+                <span class="prob-num" id="probNum">0.0%</span>
+                <span class="prob-label">Calibrated AI Probability</span>
+              </div>
+              <div class="confidence-display">
+                <span class="conf-label">Confidence:</span>
+                <span class="conf-val" id="confidenceVal">High</span>
+              </div>
             </div>
           </div>
+
+          <p class="verdict-explanation" id="verdictSummary"></p>
+
+          <!-- Probability Calibration Track -->
+          <div class="calibration-bar-wrap">
+            <div class="calibration-track">
+              <div class="calibration-fill" id="gaugeFill"></div>
+            </div>
+            <div class="calibration-ticks">
+              <span class="tick-label human">0% Human Baseline</span>
+              <span class="tick-label uncertain">35% Uncertain</span>
+              <span class="tick-label assisted">65% AI-Assisted</span>
+              <span class="tick-label generated">85% AI-Generated</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metrics Snapshot Grid -->
+        <div class="metrics-grid">
+          <div class="brutal-box metric-cell">
+            <span class="cell-label">Total Words</span>
+            <span class="cell-val" id="metricWords">0</span>
+          </div>
+          <div class="brutal-box metric-cell">
+            <span class="cell-label">Total Sentences</span>
+            <span class="cell-val" id="metricSentences">0</span>
+          </div>
+          <div class="brutal-box metric-cell alert-cell">
+            <span class="cell-label">Flagged Passages</span>
+            <span class="cell-val" id="metricFlagged">0</span>
+          </div>
+          <div class="brutal-box metric-cell">
+            <span class="cell-label">Mahalanobis Distance</span>
+            <span class="cell-val" id="metricMahalanobis">0.00</span>
+          </div>
+        </div>
+
+        <!-- Interactive Evidence Inspector (Side-by-Side) -->
+        <div class="inspector-split">
           
-          <p class="verdict-summary" id="verdictSummary"></p>
+          <!-- Left Column: Sentence Grounding Reader -->
+          <div class="brutal-card span-reader-card">
+            <div class="card-title-bar">
+              <h3 class="card-heading">Sentence Evidence Grounding</h3>
+              <span class="reader-tip">Click highlighted text to inspect measurements</span>
+            </div>
+            
+            <div class="severity-legend">
+              <span class="legend-chip chip-high">AI-Skewed (High)</span>
+              <span class="legend-chip chip-med">AI-Skewed (Medium)</span>
+              <span class="legend-chip chip-human">Human Grounded</span>
+              <span class="legend-chip chip-neutral">Neutral</span>
+            </div>
 
-          <!-- Probabilistic Gauge -->
-          <div class="gauge-section">
-            <div class="gauge-labels">
-              <span>Human Baseline Profile</span>
-              <span id="gaugeValue">AI Probability: 12.4%</span>
-              <span>Synthetic AI Archetype</span>
-            </div>
-            <div class="gauge-track">
-              <div class="gauge-fill" id="gaugeFill" style="width: 12%;"></div>
-            </div>
-            <div class="gauge-zones">
-              <span class="zone green">0% - 35% Human</span>
-              <span class="zone amber">35% - 65% Uncertain</span>
-              <span class="zone purple">65% - 85% AI-Assisted</span>
-              <span class="zone red">85% - 100% AI-Gen</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Metrics Tally Row -->
-        <div class="metrics-row">
-          <div class="metric-box">
-            <span class="metric-val" id="metricWords">0</span>
-            <span class="metric-label">Total Words</span>
-          </div>
-          <div class="metric-box">
-            <span class="metric-val" id="metricSentences">0</span>
-            <span class="metric-label">Sentences</span>
-          </div>
-          <div class="metric-box alert-box">
-            <span class="metric-val" id="metricFlagged">0</span>
-            <span class="metric-label">Flagged Sentences</span>
-          </div>
-          <div class="metric-box">
-            <span class="metric-val" id="metricMahalanobis">0.00</span>
-            <span class="metric-label">Mahalanobis Dist</span>
-          </div>
-        </div>
-
-        <!-- Two Column Inspector: Highlighted Text + Evidence Detail -->
-        <div class="inspector-grid">
-          <!-- Interactive Text Reader -->
-          <div class="text-inspector-card">
-            <div class="card-header">
-              <h3>2. Interactive Span Grounding</h3>
-              <span class="card-subtitle">Click highlighted sentences to inspect evidence</span>
-            </div>
-            <div class="legend-row">
-              <span class="legend-item"><span class="legend-chip high"></span> AI-Skewed (High)</span>
-              <span class="legend-item"><span class="legend-chip med"></span> AI-Skewed (Medium)</span>
-              <span class="legend-item"><span class="legend-chip human"></span> Human Grounded</span>
-            </div>
-            <div class="highlighted-essay-body" id="highlightedEssayBody">
+            <div class="text-spans-container" id="highlightedEssayBody">
               <!-- Dynamically populated sentence spans -->
             </div>
           </div>
 
-          <!-- Sentence Evidence Drawer -->
-          <div class="evidence-drawer-card" id="evidenceDrawer">
-            <div class="drawer-header">
-              <h3>3. Sentence Evidence Inspector</h3>
-              <span class="drawer-badge" id="selectedSpanBadge">Sentence #1 Selected</span>
+          <!-- Right Column: Evidence Details Drawer -->
+          <div class="brutal-card evidence-detail-card">
+            <div class="card-title-bar">
+              <h3 class="card-heading">Evidence Inspector</h3>
+              <span class="selected-tag" id="selectedSpanBadge">Sentence #1</span>
             </div>
 
-            <div class="selected-sentence-box" id="selectedSentenceText">
-              "Click on any sentence in the left panel to inspect its local measurements and deviation from the human reference baseline."
+            <div class="active-sentence-quote" id="selectedSentenceText">
+              "Select any highlighted sentence on the left to review its local linguistic measurements."
             </div>
 
-            <div class="evidence-items-container" id="evidenceItemsContainer">
-              <!-- Dynamically populated evidence cards -->
+            <div class="evidence-list-container" id="evidenceItemsContainer">
+              <!-- Dynamically populated evidence item cards -->
             </div>
 
-            <!-- Top Global Factors -->
-            <div class="global-factors-wrap">
-              <h4>Top Global Decision Drivers</h4>
-              <div class="factors-list" id="globalFactorsList">
-                <!-- Top AI/Human features -->
+            <!-- Global Discriminative Factors -->
+            <div class="global-drivers-box">
+              <h4 class="box-subhead">Top Global Decision Drivers</h4>
+              <div class="driver-tags" id="globalFactorsList">
+                <!-- Top AI / Human features -->
               </div>
             </div>
           </div>
+
         </div>
 
-        <!-- Disclaimers & Ethics Card -->
-        <div class="disclaimer-card">
-          <h4>⚠️ Probabilistic Limitations & Guidance</h4>
-          <p id="disclaimerText"></p>
+        <!-- Limitations & Ethical Notice -->
+        <div class="brutal-card limitations-card">
+          <div class="limitations-header">
+            <h4>Scientific Limitations & Ethical Usage Notice</h4>
+          </div>
+          <div class="limitations-body">
+            <p id="disclaimerText"></p>
+          </div>
         </div>
+
       </div>
     </section>
+
   </main>
+
+  <footer class="app-footer">
+    <div class="footer-container">
+      <span>EssayChecker &bull; Callus 2026 i12 HR Drive Hackathon Project 2</span>
+      <span>Deterministic Evidence &bull; Zero LLM-Judge &bull; Apache 2.0 / Open Research</span>
+    </div>
+  </footer>
 
   <script src="/static/app.js"></script>
 </body>

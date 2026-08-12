@@ -16,8 +16,8 @@ class AnalyzeRequest(BaseModel):
 
 
 app = FastAPI(
-    title="Evidence-Based Admissions AI Detector",
-    description="Probabilistic, feature-grounded AI authorship analysis for admissions essays without LLM judges.",
+    title="EssayChecker",
+    description="Evidence-Based AI Authorship Analysis for College Admissions Essays without LLM judges.",
     version="2.0.0",
 )
 

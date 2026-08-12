@@ -9,7 +9,7 @@ from src.api.server import app, SAMPLE_ESSAYS
 
 def main():
     print("=" * 60)
-    print("VERITASEASY PHASE 2 SMOKE TEST & SHOWCASE EVALUATION")
+    print("ESSAYCHECKER PHASE 2 SMOKE TEST & SHOWCASE EVALUATION")
     print("=" * 60)
 
     client = TestClient(app)

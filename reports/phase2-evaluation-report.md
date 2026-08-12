@@ -6,27 +6,27 @@
 
 ## 1. Final Architecture
 
-The Phase 2 system (`VeritasEssay`) implements a multi-tier, interpretable, deterministic AI authorship analysis architecture designed specifically for college admissions essays. It strictly enforces the core constraint: **no LLM is ever used as a judge or arbiter of authorship.**
+The Phase 2 system (`EssayChecker`) implements a multi-tier, interpretable, deterministic AI authorship analysis architecture designed specifically for college admissions essays. It strictly enforces the core constraint: **no LLM is ever used as a judge or arbiter of authorship.**
 
 ```mermaid
 flowchart TD
-    A[Admissions Essay Input] --> B[EssayCleaner & TextNormalizer\nUnicode NFKC, Strip Generation Headers/Notes]
-    B --> C[HierarchicalSegmenter\nEssay -> Paragraph -> Sentence Exact Character Spans]
+    A["Admissions Essay Input"] --> B["EssayCleaner and TextNormalizer<br/>Unicode NFKC, Strip Generation Headers/Notes"]
+    B --> C["HierarchicalSegmenter<br/>Essay to Paragraph to Sentence Exact Spans"]
     
-    C --> D1[Surface Stylometry & Predictability\nCompression Ratio, Root TTR, Delta Variance, Entropy]
-    C --> D2[Admissions Discourse & Narrative\nConcrete/Abstract Ratio, Personal Agency, Reflection Trajectory]
-    C --> D3[Distributional Geometry Engine\nRegularized Mahalanobis Distance to Fixed Human Centroid]
+    C --> D1["Surface Stylometry & Predictability<br/>Compression Ratio, Root TTR, Delta Variance, Entropy"]
+    C --> D2["Admissions Discourse & Narrative<br/>Concrete/Abstract Ratio, Personal Agency, Reflection Trajectory"]
+    C --> D3["Distributional Geometry Engine<br/>Regularized Mahalanobis Distance to Human Centroid"]
     
-    D1 --> E[Calibrated Production Logistic Model\nStandardized Feature Scoring & Logit Estimation]
+    D1 --> E["Calibrated Production Logistic Model<br/>Standardized Feature Scoring & Logit Estimation"]
     D2 --> E
     D3 --> E
     
-    C --> F[Sentence-Level Evidence Engine\nLocal Feature Deviation vs Fixed Human Baseline]
+    C --> F["Sentence-Level Evidence Engine<br/>Local Feature Deviation vs Fixed Human Baseline"]
     
-    E --> G1[Essay-Level Categorical Decision\nLikely Human | Uncertain | AI-Assisted | AI-Generated]
-    F --> G2[Interactive Highlighted Spans\nExact Character Offset Grounding & Evidence Cards]
+    E --> G1["Essay-Level Categorical Decision<br/>Likely Human / Uncertain / AI-Assisted / AI-Generated"]
+    F --> G2["Interactive Highlighted Spans<br/>Exact Character Offset Grounding & Evidence Cards"]
     
-    G1 --> H[VeritasEssay Interactive UI & API]
+    G1 --> H["EssayChecker Interactive UI and API"]
     G2 --> H
 ```
 

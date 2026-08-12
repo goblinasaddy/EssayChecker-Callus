@@ -1,5 +1,5 @@
 // ==========================================================================
-// VeritasEssay Frontend Interactive Logic
+// EssayChecker — Frontend Interactive Engine (Neo-Brutalist UI)
 // ==========================================================================
 
 let sampleEssays = {};
@@ -23,11 +23,11 @@ const sampleDesc = document.getElementById("sampleDesc");
 const emptyPlaceholder = document.getElementById("emptyPlaceholder");
 const analysisView = document.getElementById("analysisView");
 
-const verdictText = document.getElementById("verdictText");
-const verdictDot = document.getElementById("verdictDot");
+const verdictCard = document.getElementById("verdictCard");
+const verdictBadge = document.getElementById("verdictBadge");
 const verdictSummary = document.getElementById("verdictSummary");
-const confidenceText = document.getElementById("confidenceText");
-const gaugeValue = document.getElementById("gaugeValue");
+const confidenceVal = document.getElementById("confidenceVal");
+const probNum = document.getElementById("probNum");
 const gaugeFill = document.getElementById("gaugeFill");
 
 const metricWords = document.getElementById("metricWords");
@@ -57,16 +57,16 @@ function setupInputListeners() {
   btnClear.addEventListener("click", () => {
     essayInput.value = "";
     updateCounts();
-    document.querySelectorAll(".pill-btn").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".sample-btn").forEach(p => p.classList.remove("active"));
     sampleInfoCard.style.display = "none";
     showEmptyState();
   });
 
   btnAnalyze.addEventListener("click", runAnalysis);
 
-  document.querySelectorAll(".pill-btn").forEach(btn => {
-    btn.addEventListener("click", (e) => {
-      document.querySelectorAll(".pill-btn").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".sample-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".sample-btn").forEach(p => p.classList.remove("active"));
       btn.classList.add("active");
       const sampleId = btn.getAttribute("data-sample");
       loadSample(sampleId);
@@ -91,7 +91,7 @@ async function loadSampleEssays() {
       });
     }
   } catch (err) {
-    console.warn("Could not fetch samples dynamically, using fallbacks:", err);
+    console.warn("Using fallback samples:", err);
   }
 }
 
@@ -101,7 +101,7 @@ function loadSample(sampleId) {
 
   sampleInfoCard.style.display = "block";
   sampleBadge.textContent = sample.badge;
-  sampleBadge.className = `sample-badge ${sample.badge_color || 'emerald'}`;
+  sampleBadge.className = `status-badge ${sample.badge_color || ''}`;
   sampleTitle.textContent = sample.title;
   sampleDesc.textContent = sample.description;
 
@@ -141,7 +141,7 @@ async function runAnalysis() {
     }
   } catch (err) {
     console.error("Analysis failed:", err);
-    alert("Failed to connect to the analysis engine. Please verify the backend service.");
+    alert("Failed to connect to the analysis engine. Please verify that the backend server is running.");
   } finally {
     setLoadingState(false);
   }
@@ -154,7 +154,7 @@ function setLoadingState(loading) {
     analyzeSpinner.style.display = "inline-block";
   } else {
     btnAnalyze.disabled = false;
-    btnAnalyzeText.textContent = "Analyze Measurable Evidence";
+    btnAnalyzeText.textContent = "Analyze Essay Evidence";
     analyzeSpinner.style.display = "none";
   }
 }
@@ -166,25 +166,46 @@ function showEmptyState() {
 
 function renderAnalysisResults(data) {
   emptyPlaceholder.style.display = "none";
-  analysisView.style.display = "block";
+  analysisView.style.display = "flex";
 
   const assessment = data.assessment;
   const metadata = data.metadata;
   const evidence = data.evidence;
 
-  // 1. Verdict & Gauge
-  verdictText.textContent = assessment.category;
-  verdictText.style.color = assessment.verdict_color;
-  verdictDot.style.background = assessment.verdict_color;
-  verdictDot.style.boxShadow = `0 0 10px ${assessment.verdict_color}`;
-  confidenceText.textContent = assessment.confidence_level;
+  // 1. Decision Card & Badge
+  verdictBadge.textContent = assessment.category;
+  verdictBadge.className = "verdict-badge";
+  verdictCard.className = "brutal-card verdict-card";
+
+  if (assessment.verdict_code === "LIKELY_AI_GENERATED") {
+    verdictBadge.classList.add("ai");
+    verdictCard.classList.add("verdict-ai");
+  } else if (assessment.verdict_code === "LIKELY_AI_ASSISTED") {
+    verdictBadge.classList.add("assisted");
+    verdictCard.classList.add("verdict-assisted");
+  } else if (assessment.verdict_code === "UNCERTAIN") {
+    verdictBadge.classList.add("uncertain");
+    verdictCard.classList.add("verdict-uncertain");
+  }
+
+  confidenceVal.textContent = assessment.confidence_level;
   verdictSummary.textContent = assessment.summary;
 
   const probPct = (assessment.calibrated_ai_probability * 100).toFixed(1);
-  gaugeValue.textContent = `Calibrated AI Score: ${probPct}%`;
-  gaugeFill.style.width = `${Math.min(100, Math.max(5, probPct))}%`;
+  probNum.textContent = `${probPct}%`;
+  gaugeFill.style.width = `${Math.min(100, Math.max(4, probPct))}%`;
+  
+  if (assessment.verdict_code === "LIKELY_AI_GENERATED") {
+    gaugeFill.style.background = "var(--color-ai-border)";
+  } else if (assessment.verdict_code === "LIKELY_AI_ASSISTED") {
+    gaugeFill.style.background = "var(--color-assisted-border)";
+  } else if (assessment.verdict_code === "UNCERTAIN") {
+    gaugeFill.style.background = "var(--color-uncertain-border)";
+  } else {
+    gaugeFill.style.background = "var(--color-human-border)";
+  }
 
-  // 2. Metrics Row
+  // 2. Metrics Snapshot Grid
   metricWords.textContent = metadata.word_count;
   metricSentences.textContent = metadata.sentence_count;
   metricFlagged.textContent = metadata.flagged_sentence_count;
@@ -219,10 +240,8 @@ function renderHighlightedText(spans) {
   }
 
   let currentP = document.createElement("p");
-  let lastParaIdx = spans[0].sentence_idx >= 0 ? 0 : 0;
 
   spans.forEach((span, idx) => {
-    // Check if new paragraph
     if (idx > 0 && spans[idx].text.startsWith("\n\n")) {
       highlightedEssayBody.appendChild(currentP);
       currentP = document.createElement("p");
@@ -247,7 +266,6 @@ function renderHighlightedText(spans) {
 function selectSpan(spanId) {
   selectedSpanId = spanId;
 
-  // Highlight active span in reader
   document.querySelectorAll(".essay-span").forEach(el => el.classList.remove("selected"));
   const activeEl = document.getElementById(`ui_${spanId}`);
   if (activeEl) {
@@ -265,11 +283,11 @@ function selectSpan(spanId) {
   if (!span.evidence_items || span.evidence_items.length === 0) {
     evidenceItemsContainer.innerHTML = `
       <div class="evidence-item-card human-skewed">
-        <div class="item-card-header">
+        <div class="item-head">
           <span>Standard Admissions Expression</span>
           <span>Aligned with Human Distribution</span>
         </div>
-        <p class="item-card-desc">This sentence does not exhibit anomalous abstract vocabulary concentration or formulaic syntactical wrappers.</p>
+        <p class="item-desc">This sentence does not exhibit anomalous abstract buzzword concentration or formulaic syntactical wrappers.</p>
       </div>
     `;
     return;
@@ -280,15 +298,15 @@ function selectSpan(spanId) {
     card.className = `evidence-item-card ${item.direction === 'AI-skewed' ? 'ai-skewed' : 'human-skewed'}`;
     
     card.innerHTML = `
-      <div class="item-card-header">
+      <div class="item-head">
         <span>${item.feature_display_name}</span>
         <span>${item.evidence_strength} (${item.direction})</span>
       </div>
-      <p class="item-card-desc">${item.explanation}</p>
-      <div class="item-card-stats">
-        <span>Observed: ${item.observed_value}</span>
-        <span>Human Ref: ${item.reference_mean} (±${item.reference_std})</span>
-        <span>Z-Score: ${item.deviation_z > 0 ? '+' : ''}${item.deviation_z}σ</span>
+      <p class="item-desc">${item.explanation}</p>
+      <div class="item-stats">
+        <span>Obs: ${item.observed_value}</span>
+        <span>Ref: ${item.reference_mean} (±${item.reference_std})</span>
+        <span>Z: ${item.deviation_z > 0 ? '+' : ''}${item.deviation_z}σ</span>
       </div>
     `;
     evidenceItemsContainer.appendChild(card);
@@ -303,9 +321,9 @@ function renderGlobalFactors(evidence) {
 
   aiItems.slice(0, 3).forEach(item => {
     const row = document.createElement("div");
-    row.className = "factor-pill ai";
+    row.className = "driver-tag ai";
     row.innerHTML = `
-      <span>⬆ ${formatFeatureName(item.feature)}</span>
+      <span>+ ${formatFeatureName(item.feature)}</span>
       <span>Obs: ${item.observed_value} (Ref: ${item.reference_mean})</span>
     `;
     globalFactorsList.appendChild(row);
@@ -313,9 +331,9 @@ function renderGlobalFactors(evidence) {
 
   humanItems.slice(0, 3).forEach(item => {
     const row = document.createElement("div");
-    row.className = "factor-pill human";
+    row.className = "driver-tag human";
     row.innerHTML = `
-      <span>⬇ ${formatFeatureName(item.feature)}</span>
+      <span>- ${formatFeatureName(item.feature)}</span>
       <span>Obs: ${item.observed_value} (Ref: ${item.reference_mean})</span>
     `;
     globalFactorsList.appendChild(row);
