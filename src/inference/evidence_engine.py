@@ -2,9 +2,10 @@
 from dataclasses import dataclass, asdict
 from typing import List, Dict, Any, Optional
 import re
+import zlib
 import numpy as np
 
-from src.segmentation.segmenter import HierarchicalSegmenter, SentenceSpan, EssaySegmentation
+from src.segmentation.segmenter import HierarchicalSegmenter, SentenceSpan, ParagraphSpan, EssaySegmentation
 from src.features.surface import SurfaceFeatureExtractor
 from src.features.discourse import DiscourseFeatureExtractor
 from src.inference.model_store import ProductionModelArtifact
@@ -32,18 +33,21 @@ class SentenceEvidence:
 class HighlightedSpan:
     span_id: str
     sentence_idx: int
+    paragraph_idx: int
     start_char: int
     end_char: int
     text: str
-    overall_severity: str  # "high", "medium", "low", "neutral"
+    overall_severity: str  # "high", "medium", "human_grounded", "neutral"
+    ai_evidence_score: float
     ai_evidence_count: int
     evidence_items: List[Dict[str, Any]]
 
 
 class EvidenceEngine:
     """
-    Localizes measurable AI and human stylistic evidence to exact sentence character spans.
-    Compares local sentence measurements against the fixed human reference distribution.
+    Two-Level Evidence Attribution Engine:
+    Localizes measurable AI and human stylistic evidence to exact sentence and paragraph character spans.
+    Compares local measurements against fixed empirical human reference distributions.
     """
 
     def __init__(self, artifact: ProductionModelArtifact, segmenter: Optional[HierarchicalSegmenter] = None):
@@ -53,14 +57,33 @@ class EvidenceEngine:
 
     def analyze_sentences(self, text: str, segmentation: Optional[EssaySegmentation] = None) -> List[HighlightedSpan]:
         """
-        Analyzes every sentence in the essay against human reference distributions
-        and returns a list of HighlightedSpans with attached evidence.
+        Analyzes every sentence (with paragraph-level context fallback) against human reference distributions
+        and returns a list of HighlightedSpans with attached empirical evidence records.
         """
         if not text or not text.strip():
             return []
 
         if segmentation is None:
             segmentation = self.segmenter.segment(text)
+
+        # 1. Pre-calculate paragraph-level metrics for fallback attribution
+        para_metrics = {}
+        for p in segmentation.paragraphs:
+            p_words = re.findall(r"\b\w+(?:'\w+)?\b", p.text.lower())
+            p_tokens = max(1, len(p_words))
+            p_abstract = [w for w in p_words if w in DiscourseFeatureExtractor.ABSTRACT_VOCABULARY]
+            p_abs_density = (len(p_abstract) / p_tokens) * 100
+            
+            # Local paragraph compression
+            p_bytes = p.text.encode("utf-8")
+            p_comp_ratio = len(zlib.compress(p_bytes)) / max(1, len(p_bytes)) if len(p_bytes) > 20 else 0.85
+
+            para_metrics[p.paragraph_idx] = {
+                "word_count": p_tokens,
+                "abstract_words": p_abstract,
+                "abstract_density": p_abs_density,
+                "compression_ratio": p_comp_ratio,
+            }
 
         highlighted_spans: List[HighlightedSpan] = []
 
@@ -70,16 +93,17 @@ class EvidenceEngine:
             token_count = max(1, len(words))
 
             evidence_items: List[SentenceEvidence] = []
+            local_ai_score = 0.0
 
-            # 1. Abstract Vocabulary Density Check
+            # --- A. Abstract Vocabulary Density Check ---
             abstract_words = [w for w in words if w in DiscourseFeatureExtractor.ABSTRACT_VOCABULARY]
             abstract_density = (len(abstract_words) / token_count) * 100
             ref_abstract = self.ref_stats.get("discourse_abstract_vocab_density", {"mean": 1.5, "std": 1.2})
             z_abstract = (abstract_density - ref_abstract["mean"]) / max(0.5, ref_abstract["std"])
 
-            if abstract_density >= 6.0 or (z_abstract >= 1.8 and len(abstract_words) >= 1):
-                strength = "Strong" if z_abstract >= 3.0 or len(abstract_words) >= 2 else "Moderate"
-                matched_str = ", ".join([f"'{w}'" for w in set(abstract_words)])
+            if len(abstract_words) >= 1:
+                strength = "Strong" if (len(abstract_words) >= 2 or z_abstract >= 2.5) else "Moderate"
+                matched_str = ", ".join([f"'{w}'" for w in sorted(set(abstract_words))])
                 evidence_items.append(SentenceEvidence(
                     sentence_idx=s.sentence_idx,
                     paragraph_idx=s.paragraph_idx,
@@ -87,25 +111,27 @@ class EvidenceEngine:
                     end_char=s.end_char,
                     text=s_text,
                     feature_name="discourse_abstract_vocab_density",
-                    feature_display_name="Abstract Buzzword Density",
+                    feature_display_name="Abstract Buzzword Concentration",
                     observed_value=round(abstract_density, 2),
                     reference_mean=round(ref_abstract["mean"], 2),
                     reference_std=round(ref_abstract["std"], 2),
-                    deviation_z=round(z_abstract, 2),
+                    deviation_z=round(max(0.0, z_abstract), 2),
                     direction="AI-skewed",
                     evidence_strength=strength,
                     explanation=(
-                        f"Sentence contains high abstract buzzword density ({abstract_density:.1f}% vs human reference {ref_abstract['mean']:.1f}%). "
-                        f"Detected keywords: {matched_str}."
+                        f"Sentence contains {abstract_density:.1f}% abstract concept vocabulary vs human reference mean of {ref_abstract['mean']:.1f}%. "
+                        f"Detected keyword(s): {matched_str}."
                     )
                 ))
+                local_ai_score += 1.5 if strength == "Strong" else 1.0
 
-            # 2. Formulaic Moral / Takeaway Wrap Check
+            # --- B. Formulaic / Expository Takeaway Patterns ---
             s_lower = s_text.lower()
             matched_moral = []
             for pat in DiscourseFeatureExtractor.FORMULAIC_MORAL_PATTERNS:
                 if re.search(pat, s_lower):
-                    matched_moral.append(pat.replace(r"\b", "").replace(" (?:experience )?", " "))
+                    clean_pat = pat.replace(r"\b", "").replace(r"(?:", "").replace(r")?", "").replace(r")", "")
+                    matched_moral.append(clean_pat)
 
             if matched_moral:
                 evidence_items.append(SentenceEvidence(
@@ -115,20 +141,22 @@ class EvidenceEngine:
                     end_char=s.end_char,
                     text=s_text,
                     feature_name="discourse_formulaic_moral_density",
-                    feature_display_name="Formulaic Lesson Pattern",
+                    feature_display_name="Formulaic Rhetorical Framing",
                     observed_value=1.0,
                     reference_mean=0.1,
                     reference_std=0.3,
                     deviation_z=3.0,
                     direction="AI-skewed",
-                    evidence_strength="Moderate",
-                    explanation=f"Contains formulaic moralizing phrasing: '{matched_moral[0]}'."
+                    evidence_strength="Strong" if len(abstract_words) >= 1 else "Moderate",
+                    explanation=f"Contains standardized expository/moral conclusion phrasing: '{matched_moral[0]}'."
                 ))
+                local_ai_score += 1.5
 
-            # 3. Personal Agency Check (First person without active verbs vs with active verbs)
-            first_person = any(w in ("i", "my", "me") for w in words)
+            # --- C. Personal Agency & Concrete Grounding vs Passive State ---
+            first_person = any(w in ("i", "my", "me", "we", "our") for w in words)
             action_verbs = [w for w in words if w in DiscourseFeatureExtractor.ACTION_VERBS]
             passive_verbs = [w for w in words if w in DiscourseFeatureExtractor.PASSIVE_STATE_VERBS]
+            concrete_words = [w for w in words if w in DiscourseFeatureExtractor.CONCRETE_SENSORY_WORDS]
 
             if first_person and len(passive_verbs) > 0 and len(action_verbs) == 0:
                 evidence_items.append(SentenceEvidence(
@@ -142,59 +170,65 @@ class EvidenceEngine:
                     observed_value=float(len(passive_verbs)),
                     reference_mean=0.3,
                     reference_std=0.5,
-                    deviation_z=1.5,
+                    deviation_z=1.4,
                     direction="AI-skewed",
                     evidence_strength="Mild",
-                    explanation="Personal reference framed via passive observation/feeling rather than concrete action."
+                    explanation="Protagonist agency is framed via passive emotional states or observations rather than active decisions."
                 ))
-            elif first_person and len(action_verbs) >= 1 and len(abstract_words) == 0:
-                # Strong human grounding marker
+                local_ai_score += 0.6
+            elif len(concrete_words) >= 1 and len(abstract_words) == 0 and len(matched_moral) == 0:
+                # Genuine Positive Human Grounding
+                matched_conc = ", ".join([f"'{w}'" for w in sorted(set(concrete_words))])
                 evidence_items.append(SentenceEvidence(
                     sentence_idx=s.sentence_idx,
                     paragraph_idx=s.paragraph_idx,
                     start_char=s.start_char,
                     end_char=s.end_char,
                     text=s_text,
-                    feature_name="discourse_agency_action_density",
-                    feature_display_name="Concrete Personal Agency",
-                    observed_value=float(len(action_verbs)),
-                    reference_mean=1.2,
-                    reference_std=0.8,
+                    feature_name="discourse_concrete_sensory_density",
+                    feature_display_name="Concrete Situational Grounding",
+                    observed_value=round((len(concrete_words) / token_count) * 100, 2),
+                    reference_mean=2.8,
+                    reference_std=1.5,
                     deviation_z=0.0,
                     direction="Human-skewed",
                     evidence_strength="Moderate",
-                    explanation=f"Direct first-person action grounding: '{action_verbs[0]}'."
+                    explanation=f"Specific tactile, physical, or situational sensory grounding: {matched_conc}."
                 ))
 
-            # 4. Sentence Pacing & Extreme Length Check
-            ref_len = self.ref_stats.get("surface_sent_len_mean", {"mean": 21.0, "std": 7.0})
-            if token_count >= 40:
+            # --- D. Paragraph Context Fallback ---
+            p_info = para_metrics.get(s.paragraph_idx, {})
+            if local_ai_score < 1.0 and p_info.get("abstract_density", 0.0) >= 3.5 and len(p_info.get("abstract_words", [])) >= 2:
+                # Paragraph as a whole is heavily abstract
+                p_abs_str = ", ".join([f"'{w}'" for w in sorted(set(p_info["abstract_words"]))[:3]])
                 evidence_items.append(SentenceEvidence(
                     sentence_idx=s.sentence_idx,
                     paragraph_idx=s.paragraph_idx,
                     start_char=s.start_char,
                     end_char=s.end_char,
                     text=s_text,
-                    feature_name="surface_sent_len_mean",
-                    feature_display_name="Elongated Complex Clause",
-                    observed_value=float(token_count),
-                    reference_mean=round(ref_len["mean"], 1),
-                    reference_std=round(ref_len["std"], 1),
-                    deviation_z=round((token_count - ref_len["mean"]) / max(1.0, ref_len["std"]), 2),
-                    direction="AI-skewed" if len(abstract_words) > 0 else "Human-skewed",
+                    feature_name="discourse_paragraph_abstraction",
+                    feature_display_name="Paragraph Abstract Density",
+                    observed_value=round(p_info["abstract_density"], 2),
+                    reference_mean=1.5,
+                    reference_std=1.2,
+                    deviation_z=round((p_info["abstract_density"] - 1.5) / 1.2, 2),
+                    direction="AI-skewed",
                     evidence_strength="Mild",
-                    explanation=f"Sentence length ({token_count} words) is substantially longer than typical admissions pacing."
+                    explanation=f"Surrounding paragraph #{s.paragraph_idx + 1} contains elevated abstract vocabulary density ({p_info['abstract_density']:.1f}%). Keywords: {p_abs_str}."
                 ))
+                local_ai_score += 0.8
 
-            # Determine overall span severity
+            # --- E. Local Evidence Severity Classification ---
             ai_items = [e for e in evidence_items if e.direction == "AI-skewed"]
             has_strong_ai = any(e.evidence_strength == "Strong" for e in ai_items)
-            
-            if has_strong_ai or len(ai_items) >= 2:
+            human_items = [e for e in evidence_items if e.direction == "Human-skewed"]
+
+            if has_strong_ai or local_ai_score >= 1.8:
                 severity = "high"
-            elif len(ai_items) == 1:
+            elif len(ai_items) >= 1 or local_ai_score >= 0.8:
                 severity = "medium"
-            elif any(e.direction == "Human-skewed" for e in evidence_items):
+            elif len(human_items) >= 1 and len(ai_items) == 0:
                 severity = "human_grounded"
             else:
                 severity = "neutral"
@@ -202,10 +236,12 @@ class EvidenceEngine:
             highlighted_spans.append(HighlightedSpan(
                 span_id=f"span_{s.sentence_idx}",
                 sentence_idx=s.sentence_idx,
+                paragraph_idx=s.paragraph_idx,
                 start_char=s.start_char,
                 end_char=s.end_char,
                 text=s_text,
                 overall_severity=severity,
+                ai_evidence_score=round(local_ai_score, 2),
                 ai_evidence_count=len(ai_items),
                 evidence_items=[asdict(e) for e in evidence_items],
             ))

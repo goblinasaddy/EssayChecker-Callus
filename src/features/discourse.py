@@ -52,6 +52,11 @@ class DiscourseFeatureExtractor(BaseFeatureExtractor):
         r"\bnot only did .+, but (?:also)?\b",
         r"\bultimately,? (?:this|i)\b",
         r"\bforever changed\b",
+        r"\bserves as an? (?:poignant|powerful|constant|monumental|reminder|tribute|catalyst)\b",
+        r"\bstands as an? (?:imposing|monumental|poignant|powerful|tribute|testament)\b",
+        r"\bpoignant reminder\b",
+        r"\bin an increasingly globalized\b",
+        r"\benduring spirit of\b",
     ]
 
     CAUSAL_CONNECTORS = [
@@ -68,17 +73,24 @@ class DiscourseFeatureExtractor(BaseFeatureExtractor):
 
     ABSTRACT_VOCABULARY = {
         "paradigm", "quintessential", "foster", "fostering", "inextricably", "dichotomy",
-        "transformative", "embodiment", "myriad", "tapestry", "beacon", "catalyst",
-        "profound", "pivotal", "delve", "nuance", "testament", "resonate", "resonates",
-        "interconnectedness", "holistic", "multifaceted", "unwavering", "culmination",
-        "testament", "epitome", "embark", "embarking", "testament"
+        "transformative", "embodiment", "myriad", "tapestry", "beacon", "catalyst", "catalysts",
+        "profound", "pivotal", "delve", "nuance", "nuances", "testament", "resonate", "resonates",
+        "interconnectedness", "interconnected", "holistic", "multifaceted", "unwavering", "culmination",
+        "epitome", "embark", "embarking", "symbolizing", "symbolize", "poignant", "grandeur",
+        "monumental", "ever-evolving", "enduring", "valor", "resilience", "patriotism",
+        "dissonance", "intricacies", "societal", "symposium", "symposiums", "harmonious",
+        "juxtaposed", "juxtaposition", "insurmountable", "disparate"
     }
 
     CONCRETE_SENSORY_WORDS = {
         "smell", "scent", "sound", "screamed", "whispered", "wooden", "metal", "grease",
         "soldering", "kitchen", "street", "table", "clock", "sweat", "chalk", "brass",
         "rain", "dirt", "guitar", "wire", "microscope", "hospital", "notebook", "stumbled",
-        "hands", "fingers", "cold", "hot", "bruise", "bandage", "canvas", "paint"
+        "hands", "fingers", "cold", "hot", "bruise", "bandage", "canvas", "paint",
+        "flour", "cleaver", "linoleum", "tiles", "dough", "pork", "dumplings", "dumpling",
+        "steam", "steaming", "baskets", "soup", "pancakes", "pot", "pan", "stove",
+        "garage", "bicycle", "wrench", "engine", "piano", "cello", "violin", "strings",
+        "bridge", "wood", "soil", "mud", "stone", "iron"
     }
 
     def __init__(self, segmenter: Optional[HierarchicalSegmenter] = None):

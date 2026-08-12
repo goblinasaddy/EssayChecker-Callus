@@ -21,13 +21,13 @@
   --color-primary-hover: #388bfd;
   
   --color-ai-red: #f85149;
-  --color-ai-bg: rgba(218, 54, 51, 0.35);
+  --color-ai-bg: rgba(218, 54, 51, 0.38);
   
   --color-amber: #e3b341;
-  --color-amber-bg: rgba(210, 153, 34, 0.3);
+  --color-amber-bg: rgba(210, 153, 34, 0.32);
   
   --color-green: #3fb950;
-  --color-green-bg: rgba(46, 160, 67, 0.18);
+  --color-green-bg: rgba(46, 160, 67, 0.2);
   
   --color-purple: #a371f7;
   
@@ -337,7 +337,36 @@ textarea#essayInput {
   font-size: 0.85rem;
   color: var(--text-muted);
   line-height: 1.55;
+  margin-bottom: 10px;
 }
+
+/* Global Drivers Inside Assessment Card */
+.global-drivers-container {
+  border-top: 1px solid var(--border-color);
+  padding-top: 8px;
+  margin-top: 6px;
+}
+
+.global-drivers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.driver-pill {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+
+.driver-pill.ai { color: #f85149; border-left: 3px solid #f85149; }
+.driver-pill.human { color: #3fb950; border-left: 3px solid #3fb950; }
 
 /* Evidence Summary Bar */
 .evidence-summary-bar {
@@ -356,6 +385,7 @@ textarea#essayInput {
 .summary-chip.chip-high { background: var(--color-ai-bg); color: var(--color-ai-red); border: 1px solid var(--color-ai-red); }
 .summary-chip.chip-med { background: var(--color-amber-bg); color: var(--color-amber); border: 1px solid var(--color-amber); }
 .summary-chip.chip-human { background: var(--color-green-bg); color: var(--color-green); border: 1px solid var(--color-green); }
+.summary-chip.chip-neutral { background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-color); }
 
 /* In-Text Passage Reader */
 .passage-reader-body {
@@ -363,7 +393,7 @@ textarea#essayInput {
   overflow-y: auto;
   padding-right: 6px;
   font-size: 0.88rem;
-  line-height: 1.7;
+  line-height: 1.75;
   color: #c9d1d9;
 }
 
@@ -382,29 +412,30 @@ textarea#essayInput {
 
 /* MANDATORY VISIBLE RED HIGHLIGHT FOR AI SKEWED EVIDENCE */
 .span-item.high {
-  background: rgba(218, 54, 51, 0.38) !important;
+  background: rgba(218, 54, 51, 0.42) !important;
   border-bottom: 2.5px solid #f85149 !important;
-  color: #ffb4a9 !important;
+  color: #ffc1be !important;
   font-weight: 500;
-  padding: 1px 3px;
+  padding: 2px 4px;
   border-radius: 2px;
 }
 
 /* AMBER HIGHLIGHT FOR MODERATE EVIDENCE */
 .span-item.medium {
-  background: rgba(210, 153, 34, 0.32) !important;
+  background: rgba(210, 153, 34, 0.35) !important;
   border-bottom: 2px solid #e3b341 !important;
   color: #ffe082 !important;
-  padding: 1px 3px;
+  padding: 2px 4px;
   border-radius: 2px;
 }
 
 /* SUBTLE GREEN FOR HUMAN GROUNDED */
 .span-item.human_grounded {
-  background: rgba(46, 160, 67, 0.15);
+  background: rgba(46, 160, 67, 0.18);
   border-bottom: 1.5px solid #3fb950;
   color: #c6f6d5;
-  padding: 1px 2px;
+  padding: 1px 3px;
+  border-radius: 2px;
 }
 
 .span-item.neutral {
@@ -413,7 +444,7 @@ textarea#essayInput {
 
 .span-item.selected {
   outline: 2px solid #58a6ff;
-  background: rgba(88, 166, 255, 0.3) !important;
+  background: rgba(88, 166, 255, 0.35) !important;
 }
 
 /* Inspector Drawer */

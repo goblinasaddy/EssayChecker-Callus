@@ -61,7 +61,7 @@
       <!-- Active Analysis View -->
       <div class="analysis-view" id="analysisView" style="display: none;">
         
-        <!-- 1. Overall Assessment Box -->
+        <!-- 1. Overall Assessment Card -->
         <div class="card verdict-box" id="verdictCard">
           <div class="verdict-top">
             <div class="verdict-primary">
@@ -74,19 +74,28 @@
             </div>
           </div>
           <p class="verdict-desc" id="verdictSummary"></p>
+
+          <!-- Top Global Decision Drivers -->
+          <div class="global-drivers-container" id="globalDriversSection">
+            <span class="label-tiny">Primary Global Decision Drivers:</span>
+            <div class="global-drivers-list" id="globalDriversList">
+              <!-- Dynamically populated global drivers -->
+            </div>
+          </div>
         </div>
 
         <!-- 2. Evidence Summary Bar -->
         <div class="evidence-summary-bar" id="evidenceSummaryBar">
           <span class="summary-chip chip-high" id="sumHigh">0 Red (AI-Skewed)</span>
           <span class="summary-chip chip-med" id="sumMed">0 Amber (Moderate)</span>
-          <span class="summary-chip chip-human" id="sumHuman">0 Human-Grounded</span>
+          <span class="summary-chip chip-human" id="sumHuman">0 Human Grounded</span>
+          <span class="summary-chip chip-neutral" id="sumNeutral">0 Neutral</span>
         </div>
 
         <!-- 3. Flagged Passages Reader (Direct In-Text Highlights) -->
         <div class="card reader-card">
           <div class="card-header">
-            <h3 class="card-subtitle">Essay Passage Evidence</h3>
+            <h3 class="card-subtitle">Passage Evidence Grounding</h3>
             <span class="hint-text">Click highlighted text to inspect evidence</span>
           </div>
 
@@ -98,7 +107,7 @@
         <!-- 4. Evidence Details Drawer -->
         <div class="card inspector-card">
           <div class="card-header">
-            <h3 class="card-subtitle">Evidence Inspector</h3>
+            <h3 class="card-subtitle">Evidence Details</h3>
             <span class="tag-sentence" id="selectedSpanBadge">Sentence #1</span>
           </div>
 

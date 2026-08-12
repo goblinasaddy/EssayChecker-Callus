@@ -1,5 +1,5 @@
 // ==========================================================================
-// EssayChecker — Frontend Interactive Engine (Neo-Brutalist Production UI)
+// EssayChecker — Two-Level Evidence Attribution Engine (Frontend Logic)
 // ==========================================================================
 
 let currentAnalysis = null;
@@ -22,10 +22,12 @@ const verdictBadge = document.getElementById("verdictBadge");
 const verdictSummary = document.getElementById("verdictSummary");
 const probNum = document.getElementById("probNum");
 const probCaption = document.getElementById("probCaption");
+const globalDriversList = document.getElementById("globalDriversList");
 
 const sumHigh = document.getElementById("sumHigh");
 const sumMed = document.getElementById("sumMed");
 const sumHuman = document.getElementById("sumHuman");
+const sumNeutral = document.getElementById("sumNeutral");
 
 const highlightedEssayBody = document.getElementById("highlightedEssayBody");
 const selectedSpanBadge = document.getElementById("selectedSpanBadge");
@@ -114,7 +116,8 @@ function renderAnalysisResults(data) {
   analysisView.style.display = "flex";
 
   const assessment = data.assessment;
-  const metadata = data.metadata;
+  const evidence = data.evidence || {};
+  const spans = data.highlighted_spans || [];
 
   // 1. Overall Decision
   verdictBadge.textContent = assessment.category;
@@ -146,29 +149,67 @@ function renderAnalysisResults(data) {
     probCaption.textContent = `Confidence: ${assessment.confidence_level}`;
   }
 
-  // 2. Summary Counts
-  const highCount = metadata.high_severity_count || 0;
-  const medCount = metadata.medium_severity_count || 0;
-  const humanCount = data.highlighted_spans.filter(s => s.overall_severity === "human_grounded").length;
+  // 2. Render Top Global Drivers
+  renderGlobalDrivers(evidence);
+
+  // 3. Summary Counts
+  const highCount = spans.filter(s => s.overall_severity === "high").length;
+  const medCount = spans.filter(s => s.overall_severity === "medium").length;
+  const humanCount = spans.filter(s => s.overall_severity === "human_grounded").length;
+  const neutralCount = spans.filter(s => s.overall_severity === "neutral").length;
 
   sumHigh.textContent = `${highCount} Red (AI-Skewed)`;
   sumMed.textContent = `${medCount} Amber (Moderate)`;
   sumHuman.textContent = `${humanCount} Human Grounded`;
+  sumNeutral.textContent = `${neutralCount} Neutral`;
 
-  // 3. Render In-Text Spans
-  renderHighlightedText(data.highlighted_spans);
+  // 4. Render In-Text Spans
+  renderHighlightedText(spans, highCount + medCount);
 
-  // 4. Disclaimers
+  // 5. Disclaimers
   disclaimerText.textContent = `${data.disclaimers.probabilistic_warning} ${data.disclaimers.no_llm_judge_guarantee}`;
 
   // Select first flagged span (or span 0)
-  const firstFlagged = data.highlighted_spans.find(s => s.overall_severity === "high" || s.overall_severity === "medium") || data.highlighted_spans[0];
+  const firstFlagged = spans.find(s => s.overall_severity === "high" || s.overall_severity === "medium") || spans[0];
   if (firstFlagged) {
     selectSpan(firstFlagged.span_id);
   }
 }
 
-function renderHighlightedText(spans) {
+function renderGlobalDrivers(evidence) {
+  globalDriversList.innerHTML = "";
+  
+  const aiDrivers = evidence.top_ai_evidence || [];
+  const humanDrivers = evidence.top_human_evidence || [];
+
+  if (aiDrivers.length === 0 && humanDrivers.length === 0) {
+    globalDriversList.innerHTML = `<span style="font-size:0.75rem;color:var(--text-dim);">No global drivers available for short text.</span>`;
+    return;
+  }
+
+  // Display top 3 AI and top 2 Human drivers
+  aiDrivers.slice(0, 3).forEach(d => {
+    const pill = document.createElement("div");
+    pill.className = "driver-pill ai";
+    pill.innerHTML = `
+      <span>+ ${formatFeatureName(d.feature)}</span>
+      <span>Obs: ${d.observed_value} (Impact: +${d.impact_score})</span>
+    `;
+    globalDriversList.appendChild(pill);
+  });
+
+  humanDrivers.slice(0, 2).forEach(d => {
+    const pill = document.createElement("div");
+    pill.className = "driver-pill human";
+    pill.innerHTML = `
+      <span>- ${formatFeatureName(d.feature)}</span>
+      <span>Obs: ${d.observed_value} (Impact: ${d.impact_score})</span>
+    `;
+    globalDriversList.appendChild(pill);
+  });
+}
+
+function renderHighlightedText(spans, flaggedCount) {
   highlightedEssayBody.innerHTML = "";
   
   if (!spans || spans.length === 0) {
@@ -212,7 +253,11 @@ function selectSpan(spanId) {
   const span = currentAnalysis.highlighted_spans.find(s => s.span_id === spanId);
   if (!span) return;
 
-  selectedSpanBadge.textContent = `Sentence #${span.sentence_idx + 1} (${span.overall_severity.toUpperCase()})`;
+  const severityLabel = span.overall_severity === "high" ? "AI-SKEWED — HIGH" :
+                        span.overall_severity === "medium" ? "AI-SKEWED — MODERATE" :
+                        span.overall_severity === "human_grounded" ? "HUMAN GROUNDED" : "NEUTRAL";
+
+  selectedSpanBadge.textContent = `Sentence #${span.sentence_idx + 1} (${severityLabel})`;
   selectedSentenceText.textContent = `"${span.text}"`;
 
   // Render Evidence Items
@@ -224,7 +269,7 @@ function selectSpan(spanId) {
           <span>Standard Admissions Expression</span>
           <span>Aligned with Human Distribution</span>
         </div>
-        <p class="row-desc">This sentence exhibits natural vocabulary and phrasing aligned with human admissions essays.</p>
+        <p class="row-desc">This sentence exhibits natural vocabulary and syntax aligned with the human reference baseline without anomalous statistical deviations.</p>
       </div>
     `;
     return;
@@ -248,4 +293,12 @@ function selectSpan(spanId) {
     `;
     evidenceItemsContainer.appendChild(card);
   });
+}
+
+function formatFeatureName(feat) {
+  return feat
+    .replace(/^surface_/, "")
+    .replace(/^discourse_/, "")
+    .replace(/^dist_/, "")
+    .replace(/_/g, " ");
 }
