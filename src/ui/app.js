@@ -1,8 +1,7 @@
 // ==========================================================================
-// EssayChecker — Frontend Interactive Engine (Neo-Brutalist UI)
+// EssayChecker — Frontend Interactive Engine (Neo-Brutalist Production UI)
 // ==========================================================================
 
-let sampleEssays = {};
 let currentAnalysis = null;
 let selectedSpanId = null;
 
@@ -15,40 +14,28 @@ const btnAnalyze = document.getElementById("btnAnalyze");
 const btnAnalyzeText = document.getElementById("btnAnalyzeText");
 const analyzeSpinner = document.getElementById("analyzeSpinner");
 
-const sampleInfoCard = document.getElementById("sampleInfoCard");
-const sampleBadge = document.getElementById("sampleBadge");
-const sampleTitle = document.getElementById("sampleTitle");
-const sampleDesc = document.getElementById("sampleDesc");
-
 const emptyPlaceholder = document.getElementById("emptyPlaceholder");
 const analysisView = document.getElementById("analysisView");
 
 const verdictCard = document.getElementById("verdictCard");
 const verdictBadge = document.getElementById("verdictBadge");
 const verdictSummary = document.getElementById("verdictSummary");
-const confidenceVal = document.getElementById("confidenceVal");
 const probNum = document.getElementById("probNum");
-const gaugeFill = document.getElementById("gaugeFill");
+const probCaption = document.getElementById("probCaption");
 
-const metricWords = document.getElementById("metricWords");
-const metricSentences = document.getElementById("metricSentences");
-const metricFlagged = document.getElementById("metricFlagged");
-const metricMahalanobis = document.getElementById("metricMahalanobis");
+const sumHigh = document.getElementById("sumHigh");
+const sumMed = document.getElementById("sumMed");
+const sumHuman = document.getElementById("sumHuman");
 
 const highlightedEssayBody = document.getElementById("highlightedEssayBody");
 const selectedSpanBadge = document.getElementById("selectedSpanBadge");
 const selectedSentenceText = document.getElementById("selectedSentenceText");
 const evidenceItemsContainer = document.getElementById("evidenceItemsContainer");
-const globalFactorsList = document.getElementById("globalFactorsList");
 const disclaimerText = document.getElementById("disclaimerText");
 
 // Initialize on Load
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
   setupInputListeners();
-  await loadSampleEssays();
-  
-  // Pre-load default human sample
-  loadSample("sample_human_dumplings");
 });
 
 function setupInputListeners() {
@@ -57,21 +44,10 @@ function setupInputListeners() {
   btnClear.addEventListener("click", () => {
     essayInput.value = "";
     updateCounts();
-    document.querySelectorAll(".sample-btn").forEach(p => p.classList.remove("active"));
-    sampleInfoCard.style.display = "none";
     showEmptyState();
   });
 
   btnAnalyze.addEventListener("click", runAnalysis);
-
-  document.querySelectorAll(".sample-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".sample-btn").forEach(p => p.classList.remove("active"));
-      btn.classList.add("active");
-      const sampleId = btn.getAttribute("data-sample");
-      loadSample(sampleId);
-    });
-  });
 }
 
 function updateCounts() {
@@ -81,41 +57,10 @@ function updateCounts() {
   charCountEl.textContent = text.length;
 }
 
-async function loadSampleEssays() {
-  try {
-    const res = await fetch("/api/samples");
-    const data = await res.json();
-    if (data.samples) {
-      data.samples.forEach(s => {
-        sampleEssays[s.id] = s;
-      });
-    }
-  } catch (err) {
-    console.warn("Using fallback samples:", err);
-  }
-}
-
-function loadSample(sampleId) {
-  const sample = sampleEssays[sampleId];
-  if (!sample) return;
-
-  sampleInfoCard.style.display = "block";
-  sampleBadge.textContent = sample.badge;
-  sampleBadge.className = `status-badge ${sample.badge_color || ''}`;
-  sampleTitle.textContent = sample.title;
-  sampleDesc.textContent = sample.description;
-
-  essayInput.value = sample.text;
-  updateCounts();
-
-  // Auto trigger analysis on sample load for seamless exploration
-  runAnalysis();
-}
-
 async function runAnalysis() {
   const text = essayInput.value.trim();
   if (!text || text.split(/\s+/).length < 20) {
-    alert("Please provide an essay with at least 20 words for meaningful admissions feature analysis.");
+    alert("Please provide an essay with at least 20 words for meaningful feature analysis.");
     return;
   }
 
@@ -137,11 +82,11 @@ async function runAnalysis() {
       currentAnalysis = data;
       renderAnalysisResults(data);
     } else {
-      alert(`Analysis Notice: ${data.message || 'Error occurred'}`);
+      alert(`Analysis Notice: ${data.message || 'Unable to process input'}`);
     }
   } catch (err) {
     console.error("Analysis failed:", err);
-    alert("Failed to connect to the analysis engine. Please verify that the backend server is running.");
+    alert("Failed to connect to the analysis engine. Please ensure the backend service is running.");
   } finally {
     setLoadingState(false);
   }
@@ -150,11 +95,11 @@ async function runAnalysis() {
 function setLoadingState(loading) {
   if (loading) {
     btnAnalyze.disabled = true;
-    btnAnalyzeText.textContent = "Extracting Signals...";
+    btnAnalyzeText.textContent = "Analyzing...";
     analyzeSpinner.style.display = "inline-block";
   } else {
     btnAnalyze.disabled = false;
-    btnAnalyzeText.textContent = "Analyze Essay Evidence";
+    btnAnalyzeText.textContent = "Analyze Essay";
     analyzeSpinner.style.display = "none";
   }
 }
@@ -170,12 +115,11 @@ function renderAnalysisResults(data) {
 
   const assessment = data.assessment;
   const metadata = data.metadata;
-  const evidence = data.evidence;
 
-  // 1. Decision Card & Badge
+  // 1. Overall Decision
   verdictBadge.textContent = assessment.category;
-  verdictBadge.className = "verdict-badge";
-  verdictCard.className = "brutal-card verdict-card";
+  verdictBadge.className = "verdict-title";
+  verdictCard.className = "card verdict-box";
 
   if (assessment.verdict_code === "LIKELY_AI_GENERATED") {
     verdictBadge.classList.add("ai");
@@ -186,43 +130,36 @@ function renderAnalysisResults(data) {
   } else if (assessment.verdict_code === "UNCERTAIN") {
     verdictBadge.classList.add("uncertain");
     verdictCard.classList.add("verdict-uncertain");
+  } else if (assessment.verdict_code === "INSUFFICIENT_EVIDENCE") {
+    verdictBadge.classList.add("indeterminate");
+    verdictCard.classList.add("verdict-indeterminate");
   }
 
-  confidenceVal.textContent = assessment.confidence_level;
   verdictSummary.textContent = assessment.summary;
 
-  const probPct = (assessment.calibrated_ai_probability * 100).toFixed(1);
-  probNum.textContent = `${probPct}%`;
-  gaugeFill.style.width = `${Math.min(100, Math.max(4, probPct))}%`;
-  
-  if (assessment.verdict_code === "LIKELY_AI_GENERATED") {
-    gaugeFill.style.background = "var(--color-ai-border)";
-  } else if (assessment.verdict_code === "LIKELY_AI_ASSISTED") {
-    gaugeFill.style.background = "var(--color-assisted-border)";
-  } else if (assessment.verdict_code === "UNCERTAIN") {
-    gaugeFill.style.background = "var(--color-uncertain-border)";
+  if (assessment.is_indeterminate) {
+    probNum.textContent = "N/A";
+    probCaption.textContent = "Short Text (<75 words)";
   } else {
-    gaugeFill.style.background = "var(--color-human-border)";
+    const probPct = (assessment.calibrated_ai_probability * 100).toFixed(1);
+    probNum.textContent = `${probPct}%`;
+    probCaption.textContent = `Confidence: ${assessment.confidence_level}`;
   }
 
-  // 2. Metrics Snapshot Grid
-  metricWords.textContent = metadata.word_count;
-  metricSentences.textContent = metadata.sentence_count;
-  metricFlagged.textContent = metadata.flagged_sentence_count;
-  const mahalDist = evidence.all_feature_measurements["dist_human_mahalanobis"] || 0;
-  metricMahalanobis.textContent = mahalDist.toFixed(2);
+  // 2. Summary Counts
+  const highCount = metadata.high_severity_count || 0;
+  const medCount = metadata.medium_severity_count || 0;
+  const humanCount = data.highlighted_spans.filter(s => s.overall_severity === "human_grounded").length;
 
-  // 3. Render Interactive Highlighted Spans
+  sumHigh.textContent = `${highCount} Red (AI-Skewed)`;
+  sumMed.textContent = `${medCount} Amber (Moderate)`;
+  sumHuman.textContent = `${humanCount} Human Grounded`;
+
+  // 3. Render In-Text Spans
   renderHighlightedText(data.highlighted_spans);
 
-  // 4. Render Global Decision Drivers
-  renderGlobalFactors(evidence);
-
-  // 5. Render Disclaimers
-  disclaimerText.innerHTML = `
-    <strong>Statistical Notice:</strong> ${data.disclaimers.probabilistic_warning}<br><br>
-    <strong>Fairness & Integrity:</strong> ${data.disclaimers.esl_fairness_notice} ${data.disclaimers.no_llm_judge_guarantee}
-  `;
+  // 4. Disclaimers
+  disclaimerText.textContent = `${data.disclaimers.probabilistic_warning} ${data.disclaimers.no_llm_judge_guarantee}`;
 
   // Select first flagged span (or span 0)
   const firstFlagged = data.highlighted_spans.find(s => s.overall_severity === "high" || s.overall_severity === "medium") || data.highlighted_spans[0];
@@ -235,20 +172,20 @@ function renderHighlightedText(spans) {
   highlightedEssayBody.innerHTML = "";
   
   if (!spans || spans.length === 0) {
-    highlightedEssayBody.innerHTML = "<p>No text available.</p>";
+    highlightedEssayBody.innerHTML = "<p>No text content found.</p>";
     return;
   }
 
   let currentP = document.createElement("p");
 
   spans.forEach((span, idx) => {
-    if (idx > 0 && spans[idx].text.startsWith("\n\n")) {
+    if (idx > 0 && span.text.startsWith("\n\n")) {
       highlightedEssayBody.appendChild(currentP);
       currentP = document.createElement("p");
     }
 
     const spanEl = document.createElement("span");
-    spanEl.className = `essay-span ${span.overall_severity}`;
+    spanEl.className = `span-item ${span.overall_severity}`;
     spanEl.id = `ui_${span.span_id}`;
     spanEl.textContent = span.text + " ";
     spanEl.title = `Sentence #${span.sentence_idx + 1} (${span.overall_severity.toUpperCase()})`;
@@ -266,7 +203,7 @@ function renderHighlightedText(spans) {
 function selectSpan(spanId) {
   selectedSpanId = spanId;
 
-  document.querySelectorAll(".essay-span").forEach(el => el.classList.remove("selected"));
+  document.querySelectorAll(".span-item").forEach(el => el.classList.remove("selected"));
   const activeEl = document.getElementById(`ui_${spanId}`);
   if (activeEl) {
     activeEl.classList.add("selected");
@@ -282,12 +219,12 @@ function selectSpan(spanId) {
   evidenceItemsContainer.innerHTML = "";
   if (!span.evidence_items || span.evidence_items.length === 0) {
     evidenceItemsContainer.innerHTML = `
-      <div class="evidence-item-card human-skewed">
-        <div class="item-head">
+      <div class="evidence-row-card human-skewed">
+        <div class="row-head">
           <span>Standard Admissions Expression</span>
           <span>Aligned with Human Distribution</span>
         </div>
-        <p class="item-desc">This sentence does not exhibit anomalous abstract buzzword concentration or formulaic syntactical wrappers.</p>
+        <p class="row-desc">This sentence exhibits natural vocabulary and phrasing aligned with human admissions essays.</p>
       </div>
     `;
     return;
@@ -295,55 +232,20 @@ function selectSpan(spanId) {
 
   span.evidence_items.forEach(item => {
     const card = document.createElement("div");
-    card.className = `evidence-item-card ${item.direction === 'AI-skewed' ? 'ai-skewed' : 'human-skewed'}`;
+    card.className = `evidence-row-card ${item.direction === 'AI-skewed' ? 'ai-skewed' : 'human-skewed'}`;
     
     card.innerHTML = `
-      <div class="item-head">
+      <div class="row-head">
         <span>${item.feature_display_name}</span>
         <span>${item.evidence_strength} (${item.direction})</span>
       </div>
-      <p class="item-desc">${item.explanation}</p>
-      <div class="item-stats">
-        <span>Obs: ${item.observed_value}</span>
-        <span>Ref: ${item.reference_mean} (±${item.reference_std})</span>
-        <span>Z: ${item.deviation_z > 0 ? '+' : ''}${item.deviation_z}σ</span>
+      <p class="row-desc">${item.explanation}</p>
+      <div class="row-stats">
+        <span>Observed: ${item.observed_value}</span>
+        <span>Ref Mean: ${item.reference_mean} (±${item.reference_std})</span>
+        <span>Z-Score: ${item.deviation_z > 0 ? '+' : ''}${item.deviation_z}σ</span>
       </div>
     `;
     evidenceItemsContainer.appendChild(card);
   });
-}
-
-function renderGlobalFactors(evidence) {
-  globalFactorsList.innerHTML = "";
-  
-  const aiItems = evidence.top_ai_evidence || [];
-  const humanItems = evidence.top_human_evidence || [];
-
-  aiItems.slice(0, 3).forEach(item => {
-    const row = document.createElement("div");
-    row.className = "driver-tag ai";
-    row.innerHTML = `
-      <span>+ ${formatFeatureName(item.feature)}</span>
-      <span>Obs: ${item.observed_value} (Ref: ${item.reference_mean})</span>
-    `;
-    globalFactorsList.appendChild(row);
-  });
-
-  humanItems.slice(0, 3).forEach(item => {
-    const row = document.createElement("div");
-    row.className = "driver-tag human";
-    row.innerHTML = `
-      <span>- ${formatFeatureName(item.feature)}</span>
-      <span>Obs: ${item.observed_value} (Ref: ${item.reference_mean})</span>
-    `;
-    globalFactorsList.appendChild(row);
-  });
-}
-
-function formatFeatureName(feat) {
-  return feat
-    .replace(/^surface_/, "")
-    .replace(/^discourse_/, "")
-    .replace(/^dist_/, "")
-    .replace(/_/g, " ");
 }

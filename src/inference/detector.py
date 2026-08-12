@@ -19,6 +19,8 @@ class AdmissionsAIDetector:
     Never relies on an LLM for final classification or scoring.
     """
 
+    MIN_RELIABLE_WORD_COUNT = 75
+
     def __init__(self, artifact_path: Optional[str] = None):
         if artifact_path and os.path.exists(artifact_path):
             self.artifact = ProductionModelArtifact.load(artifact_path)
@@ -55,11 +57,66 @@ class AdmissionsAIDetector:
 
         cleaned_text, clean_meta = self.cleaner.clean(raw_text)
         words = cleaned_text.split()
-        if len(words) < 20:
-            return self._short_text_response(raw_text, len(words))
+        word_count = len(words)
+
+        if word_count < 20:
+            return self._short_text_response(raw_text, word_count)
 
         # Hierarchical segmentation on raw text to preserve character offsets exactly
         segmentation = self.segmenter.segment(raw_text)
+        highlighted_spans = self.evidence_engine.analyze_sentences(raw_text, segmentation)
+        flagged_count = sum(1 for s in highlighted_spans if s.overall_severity in ("high", "medium"))
+        high_flagged_count = sum(1 for s in highlighted_spans if s.overall_severity == "high")
+        med_flagged_count = sum(1 for s in highlighted_spans if s.overall_severity == "medium")
+
+        # Check for Insufficient Evidence Safeguard (under 75 words)
+        if word_count < self.MIN_RELIABLE_WORD_COUNT:
+            return {
+                "status": "SUCCESS",
+                "model_version": self.artifact.model_version,
+                "metadata": {
+                    "word_count": word_count,
+                    "char_count": len(raw_text),
+                    "paragraph_count": segmentation.total_paragraphs,
+                    "sentence_count": segmentation.total_sentences,
+                    "flagged_sentence_count": flagged_count,
+                    "high_severity_count": high_flagged_count,
+                    "medium_severity_count": med_flagged_count,
+                },
+                "assessment": {
+                    "category": "Insufficient Evidence",
+                    "verdict_code": "INSUFFICIENT_EVIDENCE",
+                    "verdict_color": "#8b949e",
+                    "confidence_level": "N/A (Short Text)",
+                    "calibrated_ai_probability": 0.50,
+                    "is_indeterminate": True,
+                    "logit_score": 0.0,
+                    "summary": (
+                        f"This passage contains only {word_count} words. College admissions stylometric, sentence burstiness, "
+                        f"and manifold distance metrics require at least {self.MIN_RELIABLE_WORD_COUNT} words for a statistically defensible assessment. "
+                        f"Short passages produce unstable linguistic statistics that cannot be reliably calibrated against admissions essay reference distributions."
+                    ),
+                },
+                "evidence": {
+                    "top_ai_evidence": [],
+                    "top_human_evidence": [],
+                    "all_feature_measurements": {},
+                },
+                "highlighted_spans": [
+                    {
+                        "span_id": span.span_id,
+                        "sentence_idx": span.sentence_idx,
+                        "start_char": span.start_char,
+                        "end_char": span.end_char,
+                        "text": span.text,
+                        "overall_severity": span.overall_severity,
+                        "ai_evidence_count": span.ai_evidence_count,
+                        "evidence_items": span.evidence_items,
+                    }
+                    for span in highlighted_spans
+                ],
+                "disclaimers": self._get_disclaimers()
+            }
 
         # 1. Feature Extraction
         base_dict = self.pipeline.extract_base_features_single(cleaned_text)
@@ -89,17 +146,23 @@ class AdmissionsAIDetector:
         scales[scales < 1e-6] = 1.0
         x_scaled = (x_raw - means) / scales
 
+        # Robust Winsorization to prevent single-feature distance blowouts on edge-case essays
+        x_scaled_clamped = np.clip(x_scaled, -3.5, 3.5)
+
         coefs = np.array([self.artifact.coefficients.get(f, 0.0) for f in feature_cols], dtype=float)
-        logit = float(np.dot(x_scaled, coefs) + self.artifact.intercept)
-        ai_probability = float(1.0 / (1.0 + np.exp(-logit)))
+        logit = float(np.dot(x_scaled_clamped, coefs) + self.artifact.intercept)
+        raw_prob = float(1.0 / (1.0 + np.exp(-logit)))
+        
+        # Bound probability to prevent misleading pseudo-certainty (100.0% / 0.0%)
+        ai_probability = float(np.clip(raw_prob, 0.01, 0.99))
 
         # 3. Categorical Assessment Mapping
         thresholds = self.artifact.thresholds
         if ai_probability < thresholds["human_max"]:
             category = "Likely Human"
             verdict_code = "LIKELY_HUMAN"
-            verdict_color = "#10b981"  # Emerald Green
-            confidence_level = "High" if ai_probability < 0.20 else "Moderate"
+            verdict_color = "#3fb950"  # Forest Green
+            confidence_level = "High" if (ai_probability < 0.15 and word_count >= 120) else "Moderate"
             summary_desc = (
                 "The essay displays authentic student writing rhythm, idiosyncratic sentence burstiness, "
                 "active personal agency, and grounded situational descriptions consistent with human admissions essays."
@@ -107,16 +170,16 @@ class AdmissionsAIDetector:
         elif ai_probability < thresholds["uncertain_max"]:
             category = "Uncertain / Mixed Evidence"
             verdict_code = "UNCERTAIN"
-            verdict_color = "#f59e0b"  # Amber
+            verdict_color = "#e3b341"  # Amber
             confidence_level = "Low"
             summary_desc = (
                 "The essay contains a balance of human and machine-like signals. It may represent heavily edited student writing, "
-                "an articulate human essay with elevated diction, or lightly assisted composition. Definite authorship cannot be reliably asserted."
+                "an articulate human essay with elevated diction, or lightly assisted composition. Definite authorship cannot be asserted."
             )
         elif ai_probability < thresholds["ai_assisted_max"]:
             category = "Likely AI-Assisted / Polished"
             verdict_code = "LIKELY_AI_ASSISTED"
-            verdict_color = "#8b5cf6"  # Purple
+            verdict_color = "#a371f7"  # Purple
             confidence_level = "Moderate"
             summary_desc = (
                 "The essay exhibits structural markers consistent with human ideas subsequently revised or polished by an LLM, "
@@ -125,16 +188,22 @@ class AdmissionsAIDetector:
         else:
             category = "Likely AI-Generated"
             verdict_code = "LIKELY_AI_GENERATED"
-            verdict_color = "#ef4444"  # Coral Red
-            confidence_level = "High" if ai_probability > 0.92 else "Moderate"
-            summary_desc = (
-                "Multiple independent feature families strongly diverge from the human reference distribution, including high Mahalanobis "
-                "structural distance, prominent abstract concept buzzwords, formulaic moral conclusions, and uniform token compressibility."
-            )
+            verdict_color = "#f85149"  # Crimson Red
+            confidence_level = "High" if (ai_probability > 0.90 and word_count >= 120) else "Moderate"
+            if flagged_count > 0:
+                summary_desc = (
+                    f"Multiple independent feature families strongly diverge from human admissions baselines. "
+                    f"{flagged_count} sentence(s) exhibit significant local AI-skewed markers."
+                )
+            else:
+                summary_desc = (
+                    "Global essay features (distributional distance, compressed entropy) diverge from human baselines, "
+                    "though no single sentence crossed the individual local threshold."
+                )
 
         # 4. Feature Contributions Breakdown
         contributions = []
-        for feat, x_val, s_val, c_val in zip(feature_cols, x_raw, x_scaled, coefs):
+        for feat, x_val, s_val, c_val in zip(feature_cols, x_raw, x_scaled_clamped, coefs):
             impact = float(s_val * c_val)
             ref_stat = self.artifact.human_reference_stats.get(feat, {"mean": 0.0, "std": 1.0})
             contributions.append({
@@ -149,19 +218,17 @@ class AdmissionsAIDetector:
         top_ai_evidence = [c for c in contributions if c["direction"] == "AI-skewed"][:5]
         top_human_evidence = [c for c in contributions if c["direction"] == "Human-skewed"][:5]
 
-        # 5. Sentence-Level Evidence Highlighting
-        highlighted_spans = self.evidence_engine.analyze_sentences(raw_text, segmentation)
-        flagged_count = sum(1 for s in highlighted_spans if s.overall_severity in ("high", "medium"))
-
         return {
             "status": "SUCCESS",
             "model_version": self.artifact.model_version,
             "metadata": {
-                "word_count": len(words),
+                "word_count": word_count,
                 "char_count": len(raw_text),
                 "paragraph_count": segmentation.total_paragraphs,
                 "sentence_count": segmentation.total_sentences,
                 "flagged_sentence_count": flagged_count,
+                "high_severity_count": high_flagged_count,
+                "medium_severity_count": med_flagged_count,
             },
             "assessment": {
                 "category": category,
@@ -169,6 +236,7 @@ class AdmissionsAIDetector:
                 "verdict_color": verdict_color,
                 "confidence_level": confidence_level,
                 "calibrated_ai_probability": round(ai_probability, 4),
+                "is_indeterminate": False,
                 "logit_score": round(logit, 4),
                 "summary": summary_desc,
             },
@@ -190,17 +258,20 @@ class AdmissionsAIDetector:
                 }
                 for span in highlighted_spans
             ],
-            "disclaimers": {
-                "probabilistic_warning": (
-                    "This analysis is based on statistical and linguistic evidence compared against a verified human reference corpus. "
-                    "Statistical indicators do NOT constitute absolute proof of machine authorship. Results should be reviewed holistically by human readers."
-                ),
-                "esl_fairness_notice": (
-                    "This system does not infer or evaluate applicant demographic background or English proficiency. Highly articulate or non-native "
-                    "writing styles may exhibit idiosyncratic feature profiles."
-                ),
-                "no_llm_judge_guarantee": "All scores and evidence are computed strictly using deterministic feature extractors and calibrated statistical models. No LLM was prompted to judge this essay."
-            }
+            "disclaimers": self._get_disclaimers()
+        }
+
+    def _get_disclaimers(self) -> Dict[str, str]:
+        return {
+            "probabilistic_warning": (
+                "This analysis is based on statistical and linguistic evidence compared against a verified human reference corpus. "
+                "Statistical indicators do NOT constitute absolute proof of machine authorship. Results should be reviewed holistically by human readers."
+            ),
+            "esl_fairness_notice": (
+                "This system does not infer or evaluate applicant demographic background or English proficiency. Highly articulate or non-native "
+                "writing styles may exhibit idiosyncratic feature profiles."
+            ),
+            "no_llm_judge_guarantee": "All scores and evidence are computed strictly using deterministic feature extractors and calibrated statistical models. No LLM was prompted to judge this essay."
         }
 
     def _empty_response(self, msg: str) -> Dict[str, Any]:
@@ -213,7 +284,7 @@ class AdmissionsAIDetector:
     def _short_text_response(self, raw_text: str, word_count: int) -> Dict[str, Any]:
         return {
             "status": "INSUFFICIENT_LENGTH",
-            "message": f"Essay contains only {word_count} words. Admissions stylometric and narrative discourse features require at least 20 words for meaningful measurement.",
+            "message": f"Essay contains only {word_count} words. Admissions stylometric and narrative discourse features require at least 20 words for feature extraction.",
             "raw_text": raw_text,
             "word_count": word_count,
         }
