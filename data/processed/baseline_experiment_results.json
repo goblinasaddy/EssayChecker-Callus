@@ -1,0 +1,102 @@
+{
+  "validation_metrics": {
+    "logistic_regression": {
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.0,
+      "true_negatives": 1,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "true_positives": 2,
+      "confusion_matrix": [
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          2
+        ]
+      ],
+      "roc_auc": 1.0,
+      "brier_score": 0.0010797592567924304
+    },
+    "random_forest": {
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.0,
+      "true_negatives": 1,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "true_positives": 2,
+      "confusion_matrix": [
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          2
+        ]
+      ],
+      "roc_auc": 1.0,
+      "brier_score": 0.041252083333333314
+    }
+  },
+  "test_metrics": {
+    "logistic_regression": {
+      "accuracy": 0.75,
+      "precision": 0.6666666666666666,
+      "recall": 1.0,
+      "f1": 0.8,
+      "false_positive_rate": 0.5,
+      "false_negative_rate": 0.0,
+      "true_negatives": 1,
+      "false_positives": 1,
+      "false_negatives": 0,
+      "true_positives": 2,
+      "confusion_matrix": [
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          2
+        ]
+      ],
+      "roc_auc": 1.0,
+      "brier_score": 0.15650268594268832
+    },
+    "random_forest": {
+      "accuracy": 0.75,
+      "precision": 0.6666666666666666,
+      "recall": 1.0,
+      "f1": 0.8,
+      "false_positive_rate": 0.5,
+      "false_negative_rate": 0.0,
+      "true_negatives": 1,
+      "false_positives": 1,
+      "false_negatives": 0,
+      "true_positives": 2,
+      "confusion_matrix": [
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          2
+        ]
+      ],
+      "roc_auc": 1.0,
+      "brier_score": 0.18188107638888887
+    }
+  }
+}

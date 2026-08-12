@@ -1,0 +1,130 @@
+{
+  "length_robustness": [
+    {
+      "length_slice": "Short (<350w)",
+      "sample_count": 4,
+      "human_count": 2,
+      "ai_count": 2,
+      "lr_accuracy": 0.75,
+      "lr_f1": 0.8,
+      "lr_fpr": 0.5,
+      "lr_fnr": 0.0,
+      "rf_accuracy": 0.75,
+      "rf_f1": 0.8,
+      "rf_fpr": 0.5,
+      "rf_fnr": 0.0
+    }
+  ],
+  "topic_robustness": [
+    {
+      "topic": "community_leadership",
+      "sample_count": 2,
+      "human_count": 1,
+      "ai_count": 1,
+      "lr_accuracy": 1.0,
+      "lr_f1": 1.0,
+      "lr_fpr": 0.0,
+      "lr_fnr": 0.0,
+      "rf_accuracy": 1.0,
+      "rf_f1": 1.0,
+      "rf_fpr": 0.0,
+      "rf_fnr": 0.0
+    },
+    {
+      "topic": "creative_expression",
+      "sample_count": 1,
+      "human_count": 1,
+      "ai_count": 0,
+      "lr_accuracy": 0.0,
+      "lr_f1": 0.0,
+      "lr_fpr": 1.0,
+      "lr_fnr": 0.0,
+      "rf_accuracy": 0.0,
+      "rf_f1": 0.0,
+      "rf_fpr": 1.0,
+      "rf_fnr": 0.0
+    },
+    {
+      "topic": "personal_growth",
+      "sample_count": 1,
+      "human_count": 0,
+      "ai_count": 1,
+      "lr_accuracy": 1.0,
+      "lr_f1": 1.0,
+      "lr_fpr": 0.0,
+      "lr_fnr": 0.0,
+      "rf_accuracy": 1.0,
+      "rf_f1": 1.0,
+      "rf_fpr": 0.0,
+      "rf_fnr": 0.0
+    }
+  ],
+  "label_category_robustness": [
+    {
+      "label_category": "human",
+      "sample_count": 2,
+      "lr_predicted_as_ai_ratio": 0.5,
+      "lr_mean_ai_confidence": 0.4073737256273046,
+      "rf_predicted_as_ai_ratio": 0.5,
+      "rf_mean_ai_confidence": 0.5429166666666667
+    },
+    {
+      "label_category": "ai",
+      "sample_count": 2,
+      "lr_predicted_as_ai_ratio": 1.0,
+      "lr_mean_ai_confidence": 0.9866013433820615,
+      "rf_predicted_as_ai_ratio": 1.0,
+      "rf_mean_ai_confidence": 0.8233333333333335
+    }
+  ],
+  "esl_sensitivity_audit": {
+    "status": "INSUFFICIENT_METADATA",
+    "verified_esl_count": 0,
+    "verified_native_count": 2,
+    "reason": "Insufficient verified ESL admissions samples for statistically valid disparity estimation."
+  },
+  "candidate_failures": {
+    "false_positives": [
+      {
+        "essay_id": "human_2e48bd75",
+        "ground_truth": "Human",
+        "predicted": "AI",
+        "ai_probability": 0.7903814687717914,
+        "topic": "creative_expression",
+        "word_count": 176,
+        "text_snippet": "The cello endpin vibrating against the polished spruce stage floor is the only physical constant in my life. I have moved across four states and attended three high schools, but whenever I unpack my instrument, I am instantly home. In my sophomore year, I began composing an orchestral suite inspired...",
+        "top_ai_skewed_features": [
+          {
+            "feature": "dist_human_mahalanobis",
+            "value": 223.6977,
+            "human_mean": 2.4493,
+            "z_score": 3823252.64,
+            "model_impact": 1816895.004
+          },
+          {
+            "feature": "discourse_abstract_vocab_density",
+            "value": 0.565,
+            "human_mean": 0.0674,
+            "z_score": 2.79,
+            "model_impact": 1.184
+          },
+          {
+            "feature": "dist_human_euclidean",
+            "value": 8.7927,
+            "human_mean": 6.3707,
+            "z_score": 3.49,
+            "model_impact": 1.125
+          },
+          {
+            "feature": "surface_emdash_rate",
+            "value": 0.565,
+            "human_mean": 1.7994,
+            "z_score": -2.12,
+            "model_impact": 0.558
+          }
+        ]
+      }
+    ],
+    "false_negatives": []
+  }
+}

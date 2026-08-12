@@ -1,0 +1,205 @@
+"""Surface and stylometric feature extractor for admissions essays."""
+import math
+import zlib
+import re
+from collections import Counter
+from typing import Dict, List, Optional
+import numpy as np
+import nltk
+from nltk.corpus import stopwords
+
+from src.features.base import BaseFeatureExtractor, FeatureMetadata
+from src.segmentation.segmenter import HierarchicalSegmenter, EssaySegmentation
+
+
+class SurfaceFeatureExtractor(BaseFeatureExtractor):
+    """
+    Extracts surface, stylometric, rhythmic, syntactic, and predictability features.
+    """
+
+    def __init__(self, segmenter: Optional[HierarchicalSegmenter] = None):
+        self.segmenter = segmenter or HierarchicalSegmenter()
+        try:
+            self.stop_words = set(stopwords.words("english"))
+        except Exception:
+            nltk.download("stopwords", quiet=True)
+            self.stop_words = set(stopwords.words("english"))
+
+    def extract_features(self, text: str, segmentation: Optional[EssaySegmentation] = None) -> Dict[str, float]:
+        if segmentation is None:
+            segmentation = self.segmenter.segment(text)
+
+        tokens = re.findall(r"\b\w+(?:'\w+)?\b", text.lower())
+        total_tokens = len(tokens)
+        
+        if total_tokens == 0:
+            return {m.name: 0.0 for m in self.get_metadata()}
+
+        # 1. Information-Theoretic Predictability & Entropy
+        char_counts = Counter(text)
+        total_chars = len(text)
+        char_entropy = -sum((cnt / total_chars) * math.log2(cnt / total_chars) for cnt in char_counts.values() if cnt > 0)
+        
+        word_counts = Counter(tokens)
+        word_entropy = -sum((cnt / total_tokens) * math.log2(cnt / total_tokens) for cnt in word_counts.values() if cnt > 0)
+        
+        # Word Bigram Entropy
+        bigrams = list(zip(tokens[:-1], tokens[1:]))
+        if bigrams:
+            bigram_counts = Counter(bigrams)
+            total_bigrams = len(bigrams)
+            bigram_entropy = -sum((cnt / total_bigrams) * math.log2(cnt / total_bigrams) for cnt in bigram_counts.values() if cnt > 0)
+        else:
+            bigram_entropy = 0.0
+
+        # Compression ratio (zlib bytes / raw utf8 bytes)
+        raw_bytes = text.encode("utf-8")
+        compressed_bytes = zlib.compress(raw_bytes)
+        compression_ratio = len(compressed_bytes) / max(1, len(raw_bytes))
+
+        # 2. Sentence Rhythm & Burstiness
+        sentence_lengths = [len(re.findall(r"\b\w+\b", s.text)) for s in segmentation.sentences]
+        if not sentence_lengths:
+            sentence_lengths = [total_tokens]
+
+        sent_len_arr = np.array(sentence_lengths, dtype=float)
+        sent_len_mean = float(np.mean(sent_len_arr))
+        sent_len_median = float(np.median(sent_len_arr))
+        sent_len_std = float(np.std(sent_len_arr))
+        sent_len_cv = float(sent_len_std / max(1e-5, sent_len_mean))
+        
+        # Sentence-to-sentence length delta variance (Burstiness metric)
+        if len(sent_len_arr) > 1:
+            sent_deltas = np.diff(sent_len_arr)
+            sent_delta_variance = float(np.var(sent_deltas))
+            sent_delta_mean_abs = float(np.mean(np.abs(sent_deltas)))
+        else:
+            sent_delta_variance = 0.0
+            sent_delta_mean_abs = 0.0
+
+        # 3. Lexical Richness & Repetition
+        unique_tokens = len(word_counts)
+        ttr = unique_tokens / total_tokens
+        root_ttr = unique_tokens / math.sqrt(total_tokens)
+        hapax_count = sum(1 for cnt in word_counts.values() if cnt == 1)
+        hapax_ratio = hapax_count / max(1, unique_tokens)
+        
+        stopword_count = sum(1 for t in tokens if t in self.stop_words)
+        stopword_ratio = stopword_count / total_tokens
+
+        # Top 10 word concentration ratio
+        top_10_freq_sum = sum(cnt for _, cnt in word_counts.most_common(10))
+        top_10_concentration = top_10_freq_sum / total_tokens
+
+        # 4. Syntax & POS Statistics
+        try:
+            tagged = nltk.pos_tag(re.findall(r"\b\w+\b", text))
+        except Exception:
+            nltk.download('averaged_perceptron_tagger', quiet=True)
+            nltk.download('averaged_perceptron_tagger_eng', quiet=True)
+            tagged = nltk.pos_tag(re.findall(r"\b\w+\b", text))
+
+        pos_tags = [t[1] for t in tagged]
+        pos_counts = Counter(pos_tags)
+        total_tagged = max(1, len(pos_tags))
+
+        noun_ratio = sum(pos_counts[t] for t in ["NN", "NNS", "NNP", "NNPS"]) / total_tagged
+        verb_ratio = sum(pos_counts[t] for t in ["VB", "VBD", "VBG", "VBN", "VBP", "VBZ"]) / total_tagged
+        adj_ratio = sum(pos_counts[t] for t in ["JJ", "JJR", "JJS"]) / total_tagged
+        adv_ratio = sum(pos_counts[t] for t in ["RB", "RBR", "RBS"]) / total_tagged
+        pronoun_ratio = sum(pos_counts[t] for t in ["PRP", "PRP$"]) / total_tagged
+        preposition_ratio = sum(pos_counts[t] for t in ["IN", "TO"]) / total_tagged
+
+        # Passive voice indicator: forms of 'be' followed by VBN
+        be_lemmas = {"be", "is", "am", "are", "was", "were", "been", "being"}
+        passive_count = 0
+        for i in range(len(tagged) - 1):
+            if tagged[i][0].lower() in be_lemmas and tagged[i+1][1] == "VBN":
+                passive_count += 1
+            elif i < len(tagged) - 2 and tagged[i][0].lower() in be_lemmas and tagged[i+1][1].startswith("RB") and tagged[i+2][1] == "VBN":
+                passive_count += 1
+        passive_ratio = passive_count / max(1, len(segmentation.sentences))
+
+        # 5. Punctuation & Paragraph Profile
+        punc_counts = Counter(re.findall(r"[,;:\—–\-\"\'\(\)\?\!]", text))
+        comma_rate = (punc_counts[","] / total_tokens) * 100
+        semicolon_rate = (punc_counts[";"] / total_tokens) * 100
+        colon_rate = (punc_counts[":"] / total_tokens) * 100
+        emdash_rate = ((punc_counts["—"] + punc_counts["–"] + punc_counts["-"]) / total_tokens) * 100
+        quote_rate = ((punc_counts['"'] + punc_counts["'"]) / total_tokens) * 100
+        parentheses_rate = ((punc_counts["("] + punc_counts[")"]) / total_tokens) * 100
+
+        para_lengths = [len(re.findall(r"\b\w+\b", p.text)) for p in segmentation.paragraphs]
+        if para_lengths:
+            para_len_mean = float(np.mean(para_lengths))
+            para_len_std = float(np.std(para_lengths))
+        else:
+            para_len_mean = float(total_tokens)
+            para_len_std = 0.0
+
+        return {
+            "surface_char_entropy": float(char_entropy),
+            "surface_word_entropy": float(word_entropy),
+            "surface_bigram_entropy": float(bigram_entropy),
+            "surface_compression_ratio": float(compression_ratio),
+            "surface_sent_len_mean": float(sent_len_mean),
+            "surface_sent_len_median": float(sent_len_median),
+            "surface_sent_len_std": float(sent_len_std),
+            "surface_sent_len_cv": float(sent_len_cv),
+            "surface_sent_delta_variance": float(sent_delta_variance),
+            "surface_sent_delta_mean_abs": float(sent_delta_mean_abs),
+            "surface_ttr": float(ttr),
+            "surface_root_ttr": float(root_ttr),
+            "surface_hapax_ratio": float(hapax_ratio),
+            "surface_stopword_ratio": float(stopword_ratio),
+            "surface_top10_concentration": float(top_10_concentration),
+            "surface_pos_noun_ratio": float(noun_ratio),
+            "surface_pos_verb_ratio": float(verb_ratio),
+            "surface_pos_adj_ratio": float(adj_ratio),
+            "surface_pos_adv_ratio": float(adv_ratio),
+            "surface_pos_pronoun_ratio": float(pronoun_ratio),
+            "surface_pos_prep_ratio": float(preposition_ratio),
+            "surface_passive_ratio": float(passive_ratio),
+            "surface_comma_rate": float(comma_rate),
+            "surface_semicolon_rate": float(semicolon_rate),
+            "surface_colon_rate": float(colon_rate),
+            "surface_emdash_rate": float(emdash_rate),
+            "surface_quote_rate": float(quote_rate),
+            "surface_parentheses_rate": float(parentheses_rate),
+            "surface_para_len_mean": float(para_len_mean),
+            "surface_para_len_std": float(para_len_std),
+        }
+
+    def get_metadata(self) -> List[FeatureMetadata]:
+        return [
+            FeatureMetadata("surface_char_entropy", "surface", "Shannon entropy of characters", "[0.0, 8.0]", "Character level diversity", "Sensitive to character encoding"),
+            FeatureMetadata("surface_word_entropy", "surface", "Shannon entropy of token distribution", "[0.0, 16.0]", "Lexical information density", "Correlated with vocabulary size"),
+            FeatureMetadata("surface_bigram_entropy", "surface", "Entropy of consecutive word bigrams", "[0.0, 16.0]", "Predictability of word transitions", "Sparse in short texts"),
+            FeatureMetadata("surface_compression_ratio", "surface", "Zlib byte compression ratio", "[0.0, 2.0]", "Repetitiveness and token predictability", "Length sensitive"),
+            FeatureMetadata("surface_sent_len_mean", "surface", "Mean token count per sentence", "[0.0, 150.0]", "Average sentence pace", "Affected by punctuation style"),
+            FeatureMetadata("surface_sent_len_median", "surface", "Median token count per sentence", "[0.0, 150.0]", "Central tendency of sentence pace", "Robust to outliers"),
+            FeatureMetadata("surface_sent_len_std", "surface", "Standard deviation of sentence lengths", "[0.0, 100.0]", "Pacing variation across essay", "Zero if single sentence"),
+            FeatureMetadata("surface_sent_len_cv", "surface", "Coefficient of variation of sentence length", "[0.0, 5.0]", "Normalized rhythmic variance", "Undefined if length=0"),
+            FeatureMetadata("surface_sent_delta_variance", "surface", "Variance of consecutive sentence length differences", "[0.0, 500.0]", "Sentence burstiness rhythm", "Requires >= 2 sentences"),
+            FeatureMetadata("surface_sent_delta_mean_abs", "surface", "Mean absolute difference between adjacent sentence lengths", "[0.0, 100.0]", "Local pacing modulation", "Requires >= 2 sentences"),
+            FeatureMetadata("surface_ttr", "surface", "Type-Token Ratio (V / N)", "[0.0, 1.0]", "Lexical richness", "Decays with text length"),
+            FeatureMetadata("surface_root_ttr", "surface", "Root Type-Token Ratio (V / sqrt(N))", "[0.0, 50.0]", "Length-stabilized lexical richness", "Empirical approximation"),
+            FeatureMetadata("surface_hapax_ratio", "surface", "Ratio of hapax legomena to vocabulary", "[0.0, 1.0]", "Proportion of single-use words", "Sensitive to rare spelling"),
+            FeatureMetadata("surface_stopword_ratio", "surface", "Proportion of function/stop words", "[0.0, 1.0]", "Grammatical glue density", "Fixed English stopword list"),
+            FeatureMetadata("surface_top10_concentration", "surface", "Frequency share of top 10 most common words", "[0.0, 1.0]", "Lexical concentration", "Higher in repetitive text"),
+            FeatureMetadata("surface_pos_noun_ratio", "surface", "Ratio of nouns to all tagged words", "[0.0, 1.0]", "Nominal style density", "POS tagger accuracy dependent"),
+            FeatureMetadata("surface_pos_verb_ratio", "surface", "Ratio of verbs to all tagged words", "[0.0, 1.0]", "Action/verbal style density", "POS tagger accuracy dependent"),
+            FeatureMetadata("surface_pos_adj_ratio", "surface", "Ratio of adjectives to all tagged words", "[0.0, 1.0]", "Descriptive modifier density", "POS tagger accuracy dependent"),
+            FeatureMetadata("surface_pos_adv_ratio", "surface", "Ratio of adverbs to all tagged words", "[0.0, 1.0]", "Adverbial qualification density", "POS tagger accuracy dependent"),
+            FeatureMetadata("surface_pos_pronoun_ratio", "surface", "Ratio of pronouns to all tagged words", "[0.0, 1.0]", "Personal stance density", "POS tagger accuracy dependent"),
+            FeatureMetadata("surface_pos_prep_ratio", "surface", "Ratio of prepositions to all tagged words", "[0.0, 1.0]", "Relational complexity", "POS tagger accuracy dependent"),
+            FeatureMetadata("surface_passive_ratio", "surface", "Passive verb phrases per sentence", "[0.0, 5.0]", "Grammatical passivity", "Heuristic rule-based detection"),
+            FeatureMetadata("surface_comma_rate", "surface", "Commas per 100 words", "[0.0, 20.0]", "Clause complexity and pacing", "Stylistic preference"),
+            FeatureMetadata("surface_semicolon_rate", "surface", "Semicolons per 100 words", "[0.0, 10.0]", "Complex coordination frequency", "Stylistic preference"),
+            FeatureMetadata("surface_colon_rate", "surface", "Colons per 100 words", "[0.0, 10.0]", "Apposition and list frequency", "Stylistic preference"),
+            FeatureMetadata("surface_emdash_rate", "surface", "Em-dashes/hyphens per 100 words", "[0.0, 10.0]", "Parenthetical interruption style", "Formatting variation"),
+            FeatureMetadata("surface_quote_rate", "surface", "Quotation marks per 100 words", "[0.0, 15.0]", "Dialogue or quotation frequency", "Dialogue vs narrative variation"),
+            FeatureMetadata("surface_parentheses_rate", "surface", "Parentheses per 100 words", "[0.0, 10.0]", "Asides and qualifying remarks", "Stylistic preference"),
+            FeatureMetadata("surface_para_len_mean", "surface", "Mean words per paragraph", "[0.0, 500.0]", "Paragraph chunk size", "Formatting dependent"),
+            FeatureMetadata("surface_para_len_std", "surface", "Standard deviation of paragraph word counts", "[0.0, 200.0]", "Structural symmetry", "Formatting dependent"),
+        ]

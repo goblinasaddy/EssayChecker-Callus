@@ -1,0 +1,386 @@
+[
+  {
+    "name": "surface_char_entropy",
+    "group": "surface",
+    "definition": "Shannon entropy of characters",
+    "unit_range": "[0.0, 8.0]",
+    "interpretation": "Character level diversity",
+    "limitations": "Sensitive to character encoding"
+  },
+  {
+    "name": "surface_word_entropy",
+    "group": "surface",
+    "definition": "Shannon entropy of token distribution",
+    "unit_range": "[0.0, 16.0]",
+    "interpretation": "Lexical information density",
+    "limitations": "Correlated with vocabulary size"
+  },
+  {
+    "name": "surface_bigram_entropy",
+    "group": "surface",
+    "definition": "Entropy of consecutive word bigrams",
+    "unit_range": "[0.0, 16.0]",
+    "interpretation": "Predictability of word transitions",
+    "limitations": "Sparse in short texts"
+  },
+  {
+    "name": "surface_compression_ratio",
+    "group": "surface",
+    "definition": "Zlib byte compression ratio",
+    "unit_range": "[0.0, 2.0]",
+    "interpretation": "Repetitiveness and token predictability",
+    "limitations": "Length sensitive"
+  },
+  {
+    "name": "surface_sent_len_mean",
+    "group": "surface",
+    "definition": "Mean token count per sentence",
+    "unit_range": "[0.0, 150.0]",
+    "interpretation": "Average sentence pace",
+    "limitations": "Affected by punctuation style"
+  },
+  {
+    "name": "surface_sent_len_median",
+    "group": "surface",
+    "definition": "Median token count per sentence",
+    "unit_range": "[0.0, 150.0]",
+    "interpretation": "Central tendency of sentence pace",
+    "limitations": "Robust to outliers"
+  },
+  {
+    "name": "surface_sent_len_std",
+    "group": "surface",
+    "definition": "Standard deviation of sentence lengths",
+    "unit_range": "[0.0, 100.0]",
+    "interpretation": "Pacing variation across essay",
+    "limitations": "Zero if single sentence"
+  },
+  {
+    "name": "surface_sent_len_cv",
+    "group": "surface",
+    "definition": "Coefficient of variation of sentence length",
+    "unit_range": "[0.0, 5.0]",
+    "interpretation": "Normalized rhythmic variance",
+    "limitations": "Undefined if length=0"
+  },
+  {
+    "name": "surface_sent_delta_variance",
+    "group": "surface",
+    "definition": "Variance of consecutive sentence length differences",
+    "unit_range": "[0.0, 500.0]",
+    "interpretation": "Sentence burstiness rhythm",
+    "limitations": "Requires >= 2 sentences"
+  },
+  {
+    "name": "surface_sent_delta_mean_abs",
+    "group": "surface",
+    "definition": "Mean absolute difference between adjacent sentence lengths",
+    "unit_range": "[0.0, 100.0]",
+    "interpretation": "Local pacing modulation",
+    "limitations": "Requires >= 2 sentences"
+  },
+  {
+    "name": "surface_ttr",
+    "group": "surface",
+    "definition": "Type-Token Ratio (V / N)",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Lexical richness",
+    "limitations": "Decays with text length"
+  },
+  {
+    "name": "surface_root_ttr",
+    "group": "surface",
+    "definition": "Root Type-Token Ratio (V / sqrt(N))",
+    "unit_range": "[0.0, 50.0]",
+    "interpretation": "Length-stabilized lexical richness",
+    "limitations": "Empirical approximation"
+  },
+  {
+    "name": "surface_hapax_ratio",
+    "group": "surface",
+    "definition": "Ratio of hapax legomena to vocabulary",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Proportion of single-use words",
+    "limitations": "Sensitive to rare spelling"
+  },
+  {
+    "name": "surface_stopword_ratio",
+    "group": "surface",
+    "definition": "Proportion of function/stop words",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Grammatical glue density",
+    "limitations": "Fixed English stopword list"
+  },
+  {
+    "name": "surface_top10_concentration",
+    "group": "surface",
+    "definition": "Frequency share of top 10 most common words",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Lexical concentration",
+    "limitations": "Higher in repetitive text"
+  },
+  {
+    "name": "surface_pos_noun_ratio",
+    "group": "surface",
+    "definition": "Ratio of nouns to all tagged words",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Nominal style density",
+    "limitations": "POS tagger accuracy dependent"
+  },
+  {
+    "name": "surface_pos_verb_ratio",
+    "group": "surface",
+    "definition": "Ratio of verbs to all tagged words",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Action/verbal style density",
+    "limitations": "POS tagger accuracy dependent"
+  },
+  {
+    "name": "surface_pos_adj_ratio",
+    "group": "surface",
+    "definition": "Ratio of adjectives to all tagged words",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Descriptive modifier density",
+    "limitations": "POS tagger accuracy dependent"
+  },
+  {
+    "name": "surface_pos_adv_ratio",
+    "group": "surface",
+    "definition": "Ratio of adverbs to all tagged words",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Adverbial qualification density",
+    "limitations": "POS tagger accuracy dependent"
+  },
+  {
+    "name": "surface_pos_pronoun_ratio",
+    "group": "surface",
+    "definition": "Ratio of pronouns to all tagged words",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Personal stance density",
+    "limitations": "POS tagger accuracy dependent"
+  },
+  {
+    "name": "surface_pos_prep_ratio",
+    "group": "surface",
+    "definition": "Ratio of prepositions to all tagged words",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Relational complexity",
+    "limitations": "POS tagger accuracy dependent"
+  },
+  {
+    "name": "surface_passive_ratio",
+    "group": "surface",
+    "definition": "Passive verb phrases per sentence",
+    "unit_range": "[0.0, 5.0]",
+    "interpretation": "Grammatical passivity",
+    "limitations": "Heuristic rule-based detection"
+  },
+  {
+    "name": "surface_comma_rate",
+    "group": "surface",
+    "definition": "Commas per 100 words",
+    "unit_range": "[0.0, 20.0]",
+    "interpretation": "Clause complexity and pacing",
+    "limitations": "Stylistic preference"
+  },
+  {
+    "name": "surface_semicolon_rate",
+    "group": "surface",
+    "definition": "Semicolons per 100 words",
+    "unit_range": "[0.0, 10.0]",
+    "interpretation": "Complex coordination frequency",
+    "limitations": "Stylistic preference"
+  },
+  {
+    "name": "surface_colon_rate",
+    "group": "surface",
+    "definition": "Colons per 100 words",
+    "unit_range": "[0.0, 10.0]",
+    "interpretation": "Apposition and list frequency",
+    "limitations": "Stylistic preference"
+  },
+  {
+    "name": "surface_emdash_rate",
+    "group": "surface",
+    "definition": "Em-dashes/hyphens per 100 words",
+    "unit_range": "[0.0, 10.0]",
+    "interpretation": "Parenthetical interruption style",
+    "limitations": "Formatting variation"
+  },
+  {
+    "name": "surface_quote_rate",
+    "group": "surface",
+    "definition": "Quotation marks per 100 words",
+    "unit_range": "[0.0, 15.0]",
+    "interpretation": "Dialogue or quotation frequency",
+    "limitations": "Dialogue vs narrative variation"
+  },
+  {
+    "name": "surface_parentheses_rate",
+    "group": "surface",
+    "definition": "Parentheses per 100 words",
+    "unit_range": "[0.0, 10.0]",
+    "interpretation": "Asides and qualifying remarks",
+    "limitations": "Stylistic preference"
+  },
+  {
+    "name": "surface_para_len_mean",
+    "group": "surface",
+    "definition": "Mean words per paragraph",
+    "unit_range": "[0.0, 500.0]",
+    "interpretation": "Paragraph chunk size",
+    "limitations": "Formatting dependent"
+  },
+  {
+    "name": "surface_para_len_std",
+    "group": "surface",
+    "definition": "Standard deviation of paragraph word counts",
+    "unit_range": "[0.0, 200.0]",
+    "interpretation": "Structural symmetry",
+    "limitations": "Formatting dependent"
+  },
+  {
+    "name": "discourse_agency_action_density",
+    "group": "discourse",
+    "definition": "First-person active decision/action verb density",
+    "unit_range": "[0.0, 10.0]",
+    "interpretation": "Active personal agency in storytelling",
+    "limitations": "Lexicon based"
+  },
+  {
+    "name": "discourse_agency_passive_density",
+    "group": "discourse",
+    "definition": "First-person passive feeling/experiential verb density",
+    "unit_range": "[0.0, 10.0]",
+    "interpretation": "Passive or state-based framing",
+    "limitations": "Lexicon based"
+  },
+  {
+    "name": "discourse_agency_ratio",
+    "group": "discourse",
+    "definition": "Ratio of active agency to total agency markers",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Direct protagonist agency vs passive observation",
+    "limitations": "Undefined if no agency markers"
+  },
+  {
+    "name": "discourse_reflection_density",
+    "group": "discourse",
+    "definition": "Epistemic/realization reflection markers per 100 words",
+    "unit_range": "[0.0, 10.0]",
+    "interpretation": "Frequency of self-reflection moments",
+    "limitations": "Pattern matching"
+  },
+  {
+    "name": "discourse_reflection_intro_ratio",
+    "group": "discourse",
+    "definition": "Fraction of reflections occurring in first 33% of essay",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Premature reflection structure",
+    "limitations": "Normalized position"
+  },
+  {
+    "name": "discourse_reflection_body_ratio",
+    "group": "discourse",
+    "definition": "Fraction of reflections occurring in middle 33% of essay",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Integrated narrative reflection",
+    "limitations": "Normalized position"
+  },
+  {
+    "name": "discourse_reflection_conclusion_ratio",
+    "group": "discourse",
+    "definition": "Fraction of reflections occurring in final 33% of essay",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "End-loaded resolution structure",
+    "limitations": "Normalized position"
+  },
+  {
+    "name": "discourse_reflection_mean_pos",
+    "group": "discourse",
+    "definition": "Mean normalized position of reflection markers",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Chronological center of gravity of reflection",
+    "limitations": "Default 0.5 if none"
+  },
+  {
+    "name": "discourse_formulaic_moral_density",
+    "group": "discourse",
+    "definition": "Formulaic moral/takeaway phrases per 100 words",
+    "unit_range": "[0.0, 5.0]",
+    "interpretation": "Explicitness of stated life lessons",
+    "limitations": "Phrase pattern based"
+  },
+  {
+    "name": "discourse_causal_density",
+    "group": "discourse",
+    "definition": "Causal transition markers per 100 words",
+    "unit_range": "[0.0, 10.0]",
+    "interpretation": "Explanatory causal structure density",
+    "limitations": "Regex marker based"
+  },
+  {
+    "name": "discourse_temporal_density",
+    "group": "discourse",
+    "definition": "Narrative time transition markers per 100 words",
+    "unit_range": "[0.0, 10.0]",
+    "interpretation": "Chronological progression density",
+    "limitations": "Regex marker based"
+  },
+  {
+    "name": "discourse_abstract_vocab_density",
+    "group": "discourse",
+    "definition": "Frequency of abstract AI-prone vocabulary",
+    "unit_range": "[0.0, 10.0]",
+    "interpretation": "Conceptual abstractness vs grounding",
+    "limitations": "Fixed curated lexicon"
+  },
+  {
+    "name": "discourse_concrete_density",
+    "group": "discourse",
+    "definition": "Sensory, physical, and numerical grounding per 100 words",
+    "unit_range": "[0.0, 10.0]",
+    "interpretation": "Concrete situational grounding",
+    "limitations": "Lexicon and numeric based"
+  },
+  {
+    "name": "discourse_concrete_abstract_ratio",
+    "group": "discourse",
+    "definition": "Ratio of concrete grounding to total descriptive vocabulary",
+    "unit_range": "[0.0, 1.0]",
+    "interpretation": "Grounding vs abstraction balance",
+    "limitations": "Lexicon based"
+  },
+  {
+    "name": "dist_human_euclidean",
+    "group": "distributional",
+    "definition": "Standardized Euclidean distance from human training centroid",
+    "unit_range": "[0.0, 50.0]",
+    "interpretation": "Deviation from average human admissions profile",
+    "limitations": "Sensitive to dimension scaling"
+  },
+  {
+    "name": "dist_human_mahalanobis",
+    "group": "distributional",
+    "definition": "Mahalanobis distance from human empirical distribution",
+    "unit_range": "[0.0, 50.0]",
+    "interpretation": "Covariance-weighted distance from human subspace",
+    "limitations": "Requires invertible covariance estimation"
+  },
+  {
+    "name": "dist_human_cosine",
+    "group": "distributional",
+    "definition": "Cosine similarity to human centroid vector",
+    "unit_range": "[-1.0, 1.0]",
+    "interpretation": "Directional alignment with human feature archetype",
+    "limitations": "Ignores absolute magnitude"
+  },
+  {
+    "name": "dist_structural_dispersion",
+    "group": "distributional",
+    "definition": "Mean feature variance across essay paragraphs",
+    "unit_range": "[0.0, 10.0]",
+    "interpretation": "Structural modulation across essay body",
+    "limitations": "Requires multiple paragraphs"
+  }
+]

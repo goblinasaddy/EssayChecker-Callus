@@ -1,0 +1,54 @@
+{
+  "audit_stats": {
+    "total_raw": 21,
+    "exact_duplicates_dropped": 0,
+    "near_duplicates_dropped": 0,
+    "empty_or_malformed_dropped": 0,
+    "cleaned_total": 21,
+    "by_label": {
+      "human": 10,
+      "ai": 8,
+      "synthetic_polished": 3
+    },
+    "by_topic": {
+      "personal_growth": 6,
+      "overcoming_adversity": 5,
+      "challenging_beliefs": 2,
+      "intellectual_curiosity": 4,
+      "community_leadership": 2,
+      "creative_expression": 2
+    },
+    "by_model": {
+      "None": 10,
+      "gpt4o": 4,
+      "claude35": 3,
+      "gpt35": 1,
+      "llama3": 2,
+      "gemini15": 1
+    }
+  },
+  "split_stats": {
+    "total_groups": 18,
+    "train_groups": 11,
+    "val_groups": 3,
+    "test_groups": 4,
+    "train_count": 14,
+    "val_count": 3,
+    "test_count": 4,
+    "train_ratio_actual": 0.6666666666666666,
+    "val_ratio_actual": 0.14285714285714285,
+    "test_ratio_actual": 0.19047619047619047,
+    "train_class_balance": {
+      "0": 7,
+      "1": 7
+    },
+    "val_class_balance": {
+      "1": 2,
+      "0": 1
+    },
+    "test_class_balance": {
+      "0": 2,
+      "1": 2
+    }
+  }
+}

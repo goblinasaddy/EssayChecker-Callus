@@ -1,0 +1,6 @@
+configuration,feature_count,lr_accuracy,lr_f1,lr_roc_auc,lr_fpr,lr_fnr,rf_accuracy,rf_f1,rf_roc_auc,rf_fpr,rf_fnr
+Model A (Surface Only),30,0.75,0.8,1.0,0.5,0.0,0.75,0.8,1.0,0.5,0.0
+Model B (Discourse Only),14,0.75,0.8,1.0,0.5,0.0,0.75,0.8,1.0,0.5,0.0
+Model C (Distributional Only),4,0.5,0.6666666666666666,1.0,1.0,0.0,0.5,0.6666666666666666,1.0,1.0,0.0
+Model D (Surface + Discourse),44,0.75,0.8,1.0,0.5,0.0,0.75,0.8,1.0,0.5,0.0
+Model E (Full: Surface + Discourse + Dist),48,0.75,0.8,1.0,0.5,0.0,0.75,0.8,1.0,0.5,0.0
