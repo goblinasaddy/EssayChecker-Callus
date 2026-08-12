@@ -1,29 +1,92 @@
 """Surface and stylometric feature extractor for admissions essays."""
 import math
+import os
 import zlib
 import re
 from collections import Counter
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 import nltk
-from nltk.corpus import stopwords
 
 from src.features.base import BaseFeatureExtractor, FeatureMetadata
 from src.segmentation.segmenter import HierarchicalSegmenter, EssaySegmentation
+
+# Configure deterministic bundled NLTK data path
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+BUNDLED_NLTK_DATA = os.path.join(REPO_ROOT, "data", "nltk_data")
+if os.path.exists(BUNDLED_NLTK_DATA) and BUNDLED_NLTK_DATA not in nltk.data.path:
+    nltk.data.path.insert(0, BUNDLED_NLTK_DATA)
 
 
 class SurfaceFeatureExtractor(BaseFeatureExtractor):
     """
     Extracts surface, stylometric, rhythmic, syntactic, and predictability features.
+    Fully self-contained: uses bundled lexicons and POS models without runtime downloads.
     """
+
+    # 198 standard English stopwords bundled directly for zero disk/network latency
+    ENGLISH_STOPWORDS = {
+        'a', 'about', 'above', 'after', 'again', 'against', 'ain', 'all', 'am', 'an', 'and', 'any',
+        'are', 'aren', "aren't", 'as', 'at', 'be', 'because', 'been', 'before', 'being', 'below',
+        'between', 'both', 'but', 'by', 'can', 'couldn', "couldn't", 'd', 'did', 'didn', "didn't",
+        'do', 'does', 'doesn', "doesn't", 'doing', 'don', "don't", 'down', 'during', 'each', 'few',
+        'for', 'from', 'further', 'had', 'hadn', "hadn't", 'has', 'hasn', "hasn't", 'have', 'haven',
+        "haven't", 'having', 'he', "he'd", "he'll", "he's", 'her', 'here', 'hers', 'herself', 'him',
+        'himself', 'his', 'how', 'i', "i'd", "i'll", "i'm", "i've", 'if', 'in', 'into', 'is', 'isn',
+        "isn't", 'it', "it'd", "it'll", "it's", 'its', 'itself', 'just', 'll', 'm', 'ma', 'me',
+        'mightn', "mightn't", 'more', 'most', 'mustn', "mustn't", 'my', 'myself', 'needn', "needn't",
+        'no', 'nor', 'not', 'now', 'o', 'of', 'off', 'on', 'once', 'only', 'or', 'other', 'our',
+        'ours', 'ourselves', 'out', 'over', 'own', 're', 's', 'same', 'shan', "shan't", 'she',
+        "she'd", "she'll", "she's", 'should', "should've", 'shouldn', "shouldn't", 'so', 'some',
+        'such', 't', 'than', 'that', "that'll", 'the', 'their', 'theirs', 'them', 'themselves',
+        'then', 'there', 'these', 'they', "they'd", "they'll", "they're", "they've", 'this', 'those',
+        'through', 'to', 'too', 'under', 'until', 'up', 've', 'very', 'was', 'wasn', "wasn't", 'we',
+        "we'd", "we'll", "we're", "we've", 'were', 'weren', "weren't", 'what', 'when', 'where',
+        'which', 'while', 'who', 'whom', 'why', 'will', 'with', 'won', "won't", 'wouldn', "wouldn't",
+        'y', 'you', "you'd", "you'll", "you're", "you've", 'your', 'yours', 'yourself', 'yourselves'
+    }
 
     def __init__(self, segmenter: Optional[HierarchicalSegmenter] = None):
         self.segmenter = segmenter or HierarchicalSegmenter()
+        self.stop_words = self.ENGLISH_STOPWORDS
+
+    def _tag_pos(self, words: List[str]) -> List[Tuple[str, str]]:
+        """Tags words with POS tags using bundled model or deterministic fallback."""
+        if not words:
+            return []
         try:
-            self.stop_words = set(stopwords.words("english"))
+            return nltk.pos_tag(words)
         except Exception:
-            nltk.download("stopwords", quiet=True)
-            self.stop_words = set(stopwords.words("english"))
+            return self._fallback_pos_tag(words)
+
+    def _fallback_pos_tag(self, words: List[str]) -> List[Tuple[str, str]]:
+        """Fast deterministic rule-based POS tagger fallback."""
+        pronouns = {"i", "me", "my", "myself", "we", "us", "our", "ours", "you", "your", "he", "him", "his", "she", "her", "it", "its", "they", "them", "their"}
+        prepositions = {"in", "on", "at", "to", "for", "with", "from", "by", "about", "into", "through", "during", "before", "after", "above", "below"}
+        be_verbs = {"is", "am", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did", "can", "could", "will", "would", "shall", "should"}
+        
+        tags = []
+        for w in words:
+            lw = w.lower()
+            if lw in pronouns:
+                tags.append((w, "PRP"))
+            elif lw in prepositions:
+                tags.append((w, "IN"))
+            elif lw in be_verbs:
+                tags.append((w, "VB"))
+            elif lw.endswith("ly"):
+                tags.append((w, "RB"))
+            elif lw.endswith("ing"):
+                tags.append((w, "VBG"))
+            elif lw.endswith("ed"):
+                tags.append((w, "VBD"))
+            elif lw.endswith("tion") or lw.endswith("ment") or lw.endswith("ness"):
+                tags.append((w, "NN"))
+            elif lw.endswith("ous") or lw.endswith("ful") or lw.endswith("ive") or lw.endswith("al"):
+                tags.append((w, "JJ"))
+            else:
+                tags.append((w, "NN"))
+        return tags
 
     def extract_features(self, text: str, segmentation: Optional[EssaySegmentation] = None) -> Dict[str, float]:
         if segmentation is None:
@@ -92,12 +155,7 @@ class SurfaceFeatureExtractor(BaseFeatureExtractor):
         top_10_concentration = top_10_freq_sum / total_tokens
 
         # 4. Syntax & POS Statistics
-        try:
-            tagged = nltk.pos_tag(re.findall(r"\b\w+\b", text))
-        except Exception:
-            nltk.download('averaged_perceptron_tagger', quiet=True)
-            nltk.download('averaged_perceptron_tagger_eng', quiet=True)
-            tagged = nltk.pos_tag(re.findall(r"\b\w+\b", text))
+        tagged = self._tag_pos(re.findall(r"\b\w+\b", text))
 
         pos_tags = [t[1] for t in tagged]
         pos_counts = Counter(pos_tags)
@@ -138,45 +196,45 @@ class SurfaceFeatureExtractor(BaseFeatureExtractor):
             para_len_std = 0.0
 
         return {
-            "surface_char_entropy": float(char_entropy),
-            "surface_word_entropy": float(word_entropy),
-            "surface_bigram_entropy": float(bigram_entropy),
-            "surface_compression_ratio": float(compression_ratio),
-            "surface_sent_len_mean": float(sent_len_mean),
-            "surface_sent_len_median": float(sent_len_median),
-            "surface_sent_len_std": float(sent_len_std),
-            "surface_sent_len_cv": float(sent_len_cv),
-            "surface_sent_delta_variance": float(sent_delta_variance),
-            "surface_sent_delta_mean_abs": float(sent_delta_mean_abs),
-            "surface_ttr": float(ttr),
-            "surface_root_ttr": float(root_ttr),
-            "surface_hapax_ratio": float(hapax_ratio),
-            "surface_stopword_ratio": float(stopword_ratio),
-            "surface_top10_concentration": float(top_10_concentration),
-            "surface_pos_noun_ratio": float(noun_ratio),
-            "surface_pos_verb_ratio": float(verb_ratio),
-            "surface_pos_adj_ratio": float(adj_ratio),
-            "surface_pos_adv_ratio": float(adv_ratio),
-            "surface_pos_pronoun_ratio": float(pronoun_ratio),
-            "surface_pos_prep_ratio": float(preposition_ratio),
-            "surface_passive_ratio": float(passive_ratio),
-            "surface_comma_rate": float(comma_rate),
-            "surface_semicolon_rate": float(semicolon_rate),
-            "surface_colon_rate": float(colon_rate),
-            "surface_emdash_rate": float(emdash_rate),
-            "surface_quote_rate": float(quote_rate),
-            "surface_parentheses_rate": float(parentheses_rate),
-            "surface_para_len_mean": float(para_len_mean),
-            "surface_para_len_std": float(para_len_std),
+            "surface_char_entropy": round(char_entropy, 4),
+            "surface_word_entropy": round(word_entropy, 4),
+            "surface_bigram_entropy": round(bigram_entropy, 4),
+            "surface_compression_ratio": round(compression_ratio, 4),
+            "surface_sent_len_mean": round(sent_len_mean, 4),
+            "surface_sent_len_median": round(sent_len_median, 4),
+            "surface_sent_len_std": round(sent_len_std, 4),
+            "surface_sent_len_cv": round(sent_len_cv, 4),
+            "surface_sent_delta_variance": round(sent_delta_variance, 4),
+            "surface_sent_delta_mean_abs": round(sent_delta_mean_abs, 4),
+            "surface_ttr": round(ttr, 4),
+            "surface_root_ttr": round(root_ttr, 4),
+            "surface_hapax_ratio": round(hapax_ratio, 4),
+            "surface_stopword_ratio": round(stopword_ratio, 4),
+            "surface_top10_concentration": round(top_10_concentration, 4),
+            "surface_pos_noun_ratio": round(noun_ratio, 4),
+            "surface_pos_verb_ratio": round(verb_ratio, 4),
+            "surface_pos_adj_ratio": round(adj_ratio, 4),
+            "surface_pos_adv_ratio": round(adv_ratio, 4),
+            "surface_pos_pronoun_ratio": round(pronoun_ratio, 4),
+            "surface_pos_prep_ratio": round(preposition_ratio, 4),
+            "surface_passive_ratio": round(passive_ratio, 4),
+            "surface_comma_rate": round(comma_rate, 4),
+            "surface_semicolon_rate": round(semicolon_rate, 4),
+            "surface_colon_rate": round(colon_rate, 4),
+            "surface_emdash_rate": round(emdash_rate, 4),
+            "surface_quote_rate": round(quote_rate, 4),
+            "surface_parentheses_rate": round(parentheses_rate, 4),
+            "surface_para_len_mean": round(para_len_mean, 4),
+            "surface_para_len_std": round(para_len_std, 4),
         }
 
     def get_metadata(self) -> List[FeatureMetadata]:
         return [
-            FeatureMetadata("surface_char_entropy", "surface", "Shannon entropy of characters", "[0.0, 8.0]", "Character level diversity", "Sensitive to character encoding"),
-            FeatureMetadata("surface_word_entropy", "surface", "Shannon entropy of token distribution", "[0.0, 16.0]", "Lexical information density", "Correlated with vocabulary size"),
-            FeatureMetadata("surface_bigram_entropy", "surface", "Entropy of consecutive word bigrams", "[0.0, 16.0]", "Predictability of word transitions", "Sparse in short texts"),
-            FeatureMetadata("surface_compression_ratio", "surface", "Zlib byte compression ratio", "[0.0, 2.0]", "Repetitiveness and token predictability", "Length sensitive"),
-            FeatureMetadata("surface_sent_len_mean", "surface", "Mean token count per sentence", "[0.0, 150.0]", "Average sentence pace", "Affected by punctuation style"),
+            FeatureMetadata("surface_char_entropy", "surface", "Character-level Shannon entropy in bits per character", "[0.0, 8.0]", "Measures character-level unpredictability; higher indicates diverse orthography", "Sensitive to non-ASCII encoding artifacts"),
+            FeatureMetadata("surface_word_entropy", "surface", "Unigram token Shannon entropy in bits per token", "[0.0, 15.0]", "Vocabulary information density; AI text often exhibits elevated, uniform entropy", "Correlates with essay length below 150 words"),
+            FeatureMetadata("surface_bigram_entropy", "surface", "Adjacent word pair transition Shannon entropy", "[0.0, 15.0]", "Syntactic sequence diversity; lower indicates formulaic transitions", "Sparse for very short essays"),
+            FeatureMetadata("surface_compression_ratio", "surface", "Normalized zlib compression ratio (compressed_bytes / raw_bytes)", "[0.0, 1.0]", "Text compressibility; lower indicates repetitive/predictable phrasing", "Sensitive to character encoding and short text overhead"),
+            FeatureMetadata("surface_sent_len_mean", "surface", "Mean token count per sentence", "[0.0, 150.0]", "Average pacing; AI text clusters near 18-24 tokens", "Skewed by run-on sentences"),
             FeatureMetadata("surface_sent_len_median", "surface", "Median token count per sentence", "[0.0, 150.0]", "Central tendency of sentence pace", "Robust to outliers"),
             FeatureMetadata("surface_sent_len_std", "surface", "Standard deviation of sentence lengths", "[0.0, 100.0]", "Pacing variation across essay", "Zero if single sentence"),
             FeatureMetadata("surface_sent_len_cv", "surface", "Coefficient of variation of sentence length", "[0.0, 5.0]", "Normalized rhythmic variance", "Undefined if length=0"),

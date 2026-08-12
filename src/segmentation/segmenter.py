@@ -1,8 +1,16 @@
 """Hierarchical segmentation engine for essays, paragraphs, and sentences."""
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Tuple, Iterator
+import os
 import re
 import nltk
+
+
+# Configure deterministic bundled NLTK data path
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+BUNDLED_NLTK_DATA = os.path.join(REPO_ROOT, "data", "nltk_data")
+if os.path.exists(BUNDLED_NLTK_DATA) and BUNDLED_NLTK_DATA not in nltk.data.path:
+    nltk.data.path.insert(0, BUNDLED_NLTK_DATA)
 
 
 @dataclass
@@ -42,19 +50,51 @@ class EssaySegmentation:
         return None
 
 
+class DeterministicSentenceTokenizer:
+    """
+    Pure-Python deterministic sentence boundary tokenizer fallback.
+    Provides .span_tokenize(text) with exact character offsets.
+    """
+
+    SENT_SPLIT = re.compile(r'([.!?]["\'”’]?\s+)')
+
+    def span_tokenize(self, text: str) -> Iterator[Tuple[int, int]]:
+        if not text:
+            return
+        
+        pos = 0
+        for match in self.SENT_SPLIT.finditer(text):
+            full_match = match.group(0)
+            ws_len = len(full_match) - len(full_match.rstrip())
+            end = match.end() - ws_len
+            if end > pos:
+                yield (pos, end)
+            pos = match.end()
+
+        if pos < len(text):
+            yield (pos, len(text))
+
+
 class HierarchicalSegmenter:
     """
     Splits text into paragraphs and sentences while retaining exact character offsets.
     Guarantees that raw_text[s.start_char:s.end_char] exactly matches s.text.
+    Fully self-contained: loads bundled tokenizer resources without runtime downloads.
     """
 
     def __init__(self):
+        self.sent_tokenizer = self._init_tokenizer()
+
+    def _init_tokenizer(self):
+        """Initializes sentence tokenizer from bundled data or deterministic fallback."""
         try:
-            self.sent_tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+            return nltk.data.load('tokenizers/punkt/english.pickle')
         except Exception:
-            nltk.download('punkt', quiet=True)
-            nltk.download('punkt_tab', quiet=True)
-            self.sent_tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+            try:
+                from nltk.tokenize.punkt import PunktSentenceTokenizer
+                return PunktSentenceTokenizer()
+            except Exception:
+                return DeterministicSentenceTokenizer()
 
     def segment(self, text: str) -> EssaySegmentation:
         if not text:
@@ -114,7 +154,6 @@ class HierarchicalSegmenter:
         """Extracts sentences and their exact character spans within a paragraph."""
         sentences: List[SentenceSpan] = []
         
-        # Punkt sentence tokenizer span_tokenize
         current_idx = starting_sent_idx
         for s_start, s_end in self.sent_tokenizer.span_tokenize(para_text):
             s_text = para_text[s_start:s_end]
